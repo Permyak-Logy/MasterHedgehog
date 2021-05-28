@@ -4,6 +4,7 @@ from typing import Union
 import discord
 import sqlalchemy
 from discord.ext import commands
+from flask import Blueprint, jsonify, request
 
 import db_session
 from PLyBot import Bot, get_any
@@ -37,6 +38,8 @@ class PrivateChannelsConfig(SqlAlchemyBase, BaseConfigMix):
             return list(filter(bool, map(bot.get_channel, ids)))
         return []
 
+
+# TODO: У дани в Warframe не сделался канал Warframe а сделался Avoidman
 
 class PrivateChannelsCog(Cog, name="Приватные каналы"):
     """
@@ -93,7 +96,10 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
                 return
             categories = [channel.category for channel in channels_add]
             if after.channel in channels_add:
-                name = get_any(member.activities, lambda x: isinstance(x, discord.Game)) or member.display_name
+                name = get_any(member.activities, lambda x: x.type == discord.ActivityType.playing) or \
+                       get_any(member.activities, lambda x: isinstance(x, discord.Game)) or member.display_name
+                if isinstance(name, discord.Activity):
+                    name = name.name
                 channel = await after.channel.category.create_voice_channel(name=f"🔻 {name}", user_limit=5)
                 try:
                     await channel.set_permissions(member, manage_roles=True,
@@ -110,6 +116,25 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
                                 await channel.delete()
                             except discord.errors.NotFound:
                                 pass
+
+
+class PrivateChannelsBP:
+    blueprint = Blueprint('private_channels_api', __name__)
+
+    @staticmethod
+    @blueprint.route('/channels', methods=['GET', 'POST'])
+    def get_channels_bp():
+        with db_session.create_session() as session:
+            config_id = request.headers['config-id']
+            api_key = request.headers['api-key']
+
+            config: PrivateChannelsConfig = session.query(PrivateChannelsConfig).filter(
+                PrivateChannelsConfig.guild_id == int(config_id)).first()
+
+            if request.method == 'GET':
+                return jsonify(ids=list(map(int, config.channels.split(';'))))
+            elif request.method == 'POST':
+                return "ok post"
 
 
 def setup(bot: Bot):

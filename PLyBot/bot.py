@@ -75,10 +75,10 @@ class Bot(commands.Bot):
         if self.activity:
             await self.change_presence(activity=self.activity)
 
-        logging.info(f"Бот класса {self.__class__.__name__} успешно подключён (переподключён) как {self.user}")
+        logging.info(f"Бот класса {self.__class__.__name__} готов к работе как \"{self.user}\"")
 
     async def on_resumed(self):
-        logging.info(f"[resumed] Бот {self.user} возобновил сеанс")
+        pass
 
     async def on_connect(self):
         logging.info(f"[connect] Бот {self.user} подключился к discord")
@@ -144,7 +144,7 @@ class Bot(commands.Bot):
     @full_db_using(is_async=True)
     async def on_member_join(self, member: discord.Member):
         await self.wait_until_ready()
-        # TODO: Выдача ролей при перезаходе
+        # TODO: Выдача ролей при перезаходе. Убрать костыль
         with db_session.create_session() as session:
             session: Session
             DBTools.update_user(session, member)
@@ -377,6 +377,8 @@ class Bot(commands.Bot):
 
 
 class Cog(commands.Cog, name="Без названия"):
+    cls_config: BaseConfigMix
+
     def __init__(self, bot: Bot, cls_config=None):
         self.bot = bot
         if cls_config is not None:
@@ -447,12 +449,11 @@ class Cog(commands.Cog, name="Без названия"):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
-        if self.using_db:
-            session = db_session.create_session()
-            self.update_config(session, guild)
-            session.commit()
-            session.close()
-            logging.info(f'{guild} has been added in table "{self.cls_config.__tablename__}"')
+        if self.using_db and self.cls_config:
+            with db_session.create_session() as session:
+                self.update_config(session, guild)
+                session.commit()
+                logging.info(f'{guild} has been added in table "{self.cls_config.__tablename__}"')
 
     # Методы для работы с конфигами категории
     @full_db_using()

@@ -4,7 +4,7 @@ import discord
 import sqlalchemy
 from discord.ext import commands
 
-from PLyBot import Bot, Cog, HRF, Context
+from PLyBot import Bot, Cog, HRF, Context, db_session
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 
 
@@ -31,6 +31,32 @@ class StatisticCog(Cog, name='Статистика'):
         """
         Показывает статистику сервера
         """
+        with db_session.create_session() as session:
+            embed = discord.Embed(title=f"Статистика бота {ctx.me.display_name}", colour=self.bot.colour_embeds)
+            embed.set_thumbnail(url=ctx.me.avatar_url)
+            count_members = len(ctx.guild.members)
+            count_bots = len(list(filter(lambda x: not x.bot, ctx.guild.members)))
+
+            embed.add_field(
+                name="Участники",
+                value=(f"Всего - {count_members}\n"
+                       f"Людей - {count_members - count_bots}\n"
+                       f"Ботов - {count_bots}"))
+            embed.add_field(
+                name="Активность",
+                value=(f"В сети - {1}\n"
+                       f"Не активны - {2}\n"
+                       f"Не беспокоить - {3}\n"
+                       f"Не в сети - {4}"))
+            embed.add_field(
+                name="Каналы",
+                value=(f"Категорий - {1}\n"
+                       f"Каналов - {2}\n"
+                       f"Тестовых - {3}\n"
+                       f"Голосовых - {4}\n"
+                       f""))
+
+            await ctx.send(embed=embed)
 
     @commands.command()
     @commands.guild_only()

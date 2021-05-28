@@ -1,14 +1,7 @@
-from typing import Type
+from flask import Flask
+from cogs.private_channels import PrivateChannelsBP
 
-from PLyBot import Cog
-from cogs import PermissionsCog, EconomyCog
+app = Flask(__name__)
+app.register_blueprint(PrivateChannelsBP.blueprint, url_prefix='/private_channels')
 
-
-class API:
-    def __init__(self, cls_cog: Type[Cog]):
-        self.cls_cog = 0
-
-
-if __name__ == '__main__':
-    API(EconomyCog)
-    print(EconomyCog.cls_config)
+app.run('127.0.0.1', port=5000)

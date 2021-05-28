@@ -13,7 +13,7 @@ from discord.ext.commands import BucketType
 import db_session
 from PLyBot import Bot, Cog, join_string, DBTools, HRF, Context
 from PLyBot.const import EMOJI_NUMBERS
-from db_session import BaseConfigMix, SqlAlchemyBase, bigint
+from db_session import BaseConfigMix, SqlAlchemyBase, bigint, MIN_DATETIME
 
 
 # TODO: Роли бустеры
@@ -32,7 +32,7 @@ class EconomyConfig(SqlAlchemyBase, BaseConfigMix):
     currency_name = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='алм.')
 
     access = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='{}')
-    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
+    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
 
     def get_shop(self, ctx: commands.Context):
         shop = json.loads(self.shop)

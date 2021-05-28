@@ -31,18 +31,20 @@ def main():
         bot_type=TypeBot.both,
         owner_ids=owners,
         activity=discord.Game("кустики"),
-        version="Beta 2021.5.11",
+        version="Beta 2021.5.23",
         bot_name="Хог",
         permissions=8
     )
 
-    cogs = list(map(lambda x: f"cogs.{x[:-3]}", filter(not_in(['__init__.py', '__pycache__', 'warface.py']),
-                                                       os.listdir('cogs'))))
-    cogs.append('PLyBot.info.py')
+    cogs = list(map(lambda x: f"cogs.{x[:-3]}",
+                    filter(not_in([
+                        '__init__.py', '__pycache__', 'warface.py', 'warframe.py'
+                    ]), os.listdir('cogs'))))
+    cogs.append('PLyBot.info')
     bot.load_all_extensions(cogs)
 
     # noinspection SpellCheckingInspection
-    bot.run('NjEzNjQ1NTkyMjQxMTExMDQw.XVz7_g.zqjtWaxiJUowgTOu21fizZsB3oU')
+    bot.run('NjEzNjQ1NTkyMjQxMTExMDQw.XVz7_g.qj4oltJ5JApCXIW3i5SiHvHJ1xs')
 
 
 if __name__ == '__main__':

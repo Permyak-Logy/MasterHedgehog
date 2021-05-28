@@ -77,6 +77,15 @@ class RoleForReaction(SqlAlchemyBase):
         self.roles = ",".join(filter(bool, [str(role.id) for role in roles])) or None
 
 
+class RolesMembers: # (SqlAlchemyBase):
+    __tablename__ = "roles_members"
+    config_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('role'))
+
+    member_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('role'))
+
+    roles_id = sqlalchemy.Column(sqlalchemy.String)
+
+
 class RolesCog(Cog, name='Роли'):
     """
     Модуль для выдачи ролей по реакции или команде. Для их работы необходимо предварительно

@@ -160,7 +160,7 @@ class FunCog(Cog, name="Веселье"):
                 if not i % 3 - 1 == i // 3 - 1 == 0:
                     if (x, y) in bombs:
                         bombs_count += 1
-            field[point[1]][point[0]] = TEXT_EMOJI_NUMBERS[bombs_count]
+            field[point[1]][point[0]] = f"||:{TEXT_EMOJI_NUMBERS[bombs_count]}:||"
 
         for bomb in bombs:
             field[bomb[1]][bomb[0]] = "||:boom:||"
