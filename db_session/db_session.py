@@ -11,6 +11,7 @@ from .const import MAX_BIGINT, MIN_BIGINT
 logging = logging.getLogger(__name__)
 
 SqlAlchemyBase = dec.declarative_base()
+SqlAlchemyBase.get_all = classmethod(lambda cls, session: session.query(cls).all())
 
 # noinspection PyTypeChecker
 __factory: orm.sessionmaker = None
