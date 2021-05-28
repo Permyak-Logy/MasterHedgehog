@@ -9,7 +9,7 @@ from discord.utils import get
 
 import db_session
 from db_session import Session, BaseConfigMix
-from db_session.base import User, Member, Guild
+from db_session.base import User, Member, Guild, Channel, Role
 from .enums import TypeBot
 from .extra import HRF, DBTools, full_db_using, plug_afunc
 from .help import HelpCommand
@@ -363,10 +363,15 @@ class Bot(commands.Bot):
 
     # Глобальное взаимодействие с данными
     def update_all_data(self, session: db_session.Session):
-        DBTools.update_all_guilds(session, self.guilds)
-        DBTools.update_all_users(session, self.users)
-        DBTools.update_all_members(session, self.get_all_members())
-        DBTools.update_all_channels(session, self.get_all_channels())
+        Guild.update_all(session, self.guilds)
+        User.update_all_users(session, self.users)
+        Member.update_all_members(session, self.get_all_members())
+        Channel.update_all_channels(session, self.get_all_channels())
+
+        roles = []
+        for guild in self.guilds:
+            roles += guild.roles
+        Role.update_all(session, roles)
 
     # noinspection PyMethodMayBeStatic
     def delete_all_data(self, session: db_session.Session):

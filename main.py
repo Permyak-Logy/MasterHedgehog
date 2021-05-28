@@ -11,7 +11,7 @@ from PLyBot.enums import TypeBot
 
 def main():
     if os.path.isfile('db\\database.sqlite'):
-        os.remove('db\\datebase.sqlite')
+        os.remove('db\\database.sqlite')
 
     c_log = logging.StreamHandler()
     f_log = logging.FileHandler('logs\\bot.log', encoding='utf8')

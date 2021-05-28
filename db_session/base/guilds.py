@@ -1,13 +1,12 @@
-from typing import List, Iterable
+from typing import Iterable
 
 import discord
-
-import db_session
-from db_session import SqlAlchemyBase
 from sqlalchemy import orm, Column, Integer, ForeignKey, String
 
+from db_session import SqlAlchemyBase, Session, ExtraTools
 
-class Guild(SqlAlchemyBase):
+
+class Guild(SqlAlchemyBase, ExtraTools):
     __tablename__ = 'guilds'
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -33,7 +32,7 @@ class Guild(SqlAlchemyBase):
         return repr(self)
 
     @staticmethod
-    def update_all(session: db_session.Session, guilds: Iterable[discord.Guild]):
+    def update_all(session: Session, guilds: Iterable[discord.Guild]):
         ids = set(guild.id for guild in guilds)
         for guild_data in Guild.get_all(session):
             if guild_data.id not in ids:
@@ -41,15 +40,15 @@ class Guild(SqlAlchemyBase):
                 session.delete(guild_data)
 
         for guild in guilds:
-            Guild.update_guild(session, guild)
+            Guild.update(session, guild)
 
     @staticmethod
-    def get_guild(session: db_session.Session, guild: discord.Guild):
+    def get(session: Session, guild: discord.Guild):
         return session.query(Guild).filter(Guild.id == guild.id).first()
 
     @staticmethod
-    def add_guild(session: db_session.Session, guild: discord.Guild):
-        if Guild.get_guild(session, guild):
+    def add(session: Session, guild: discord.Guild):
+        if Guild.get(session, guild):
             raise ValueError("Такой сервер уже есть")
 
         guild_data = Guild()
@@ -67,10 +66,10 @@ class Guild(SqlAlchemyBase):
         return guild_data
 
     @staticmethod
-    def update_guild(session: db_session.Session, guild: discord.Guild):
-        guild_data = Guild.get_guild(session, guild)
+    def update(session: Session, guild: discord.Guild):
+        guild_data = Guild.get(session, guild)
         if not guild_data:
-            guild_data = Guild.add_guild(session, guild)
+            guild_data = Guild.add(session, guild)
         else:
             guild_data.id = guild.id
             guild_data.owner_id = guild.owner_id
@@ -85,7 +84,7 @@ class Guild(SqlAlchemyBase):
         return guild_data
 
     @staticmethod
-    def delete_guild(session: db_session.Session, guild: discord.Guild):
+    def delete(session: Session, guild: discord.Guild):
         guild = Guild.get_guild(session, guild)
         if not guild:
             raise ValueError("Такого сервера нет в базе")
