@@ -9,9 +9,9 @@ from discord.utils import get
 
 import db_session
 from db_session import Session, BaseConfigMix
-from db_session.base import User, Member, Guild
+from db_session.base import User, Member, Guild, Channel, Role
 from .enums import TypeBot
-from .extra import HRF, DBTools, full_db_using
+from .extra import HRF, DBTools, full_db_using, plug_afunc
 from .help import HelpCommand
 
 # TODO: Загрузка внешней базы данных
@@ -49,6 +49,8 @@ class Bot(commands.Bot):
         self.count_invokes = 0
         self.after_invoke(self.on_after_invoke)
 
+        self.__ready_db = False
+
         logging.info(f'init bot {self.name} {self.version}')
 
     @property
@@ -64,17 +66,23 @@ class Bot(commands.Bot):
         info = await self.application_info()
         return f'https://discord.com/api/oauth2/authorize?client_id={info.id}&permissions={self.permissions}&scope=bot'
 
+    @property
+    def ready_db(self):
+        return self.__ready_db
+
     # Слушатели событий
     async def on_ready(self):
         if self.using_db:
             with db_session.create_session() as session:
                 self.update_all_data(session)
                 session.commit()
+            self.__ready_db = True
 
         if self.activity:
             await self.change_presence(activity=self.activity)
 
         logging.info(f"Бот класса {self.__class__.__name__} готов к работе как \"{self.user}\"")
+        await self.logout()
 
     async def on_resumed(self):
         pass
@@ -85,6 +93,7 @@ class Bot(commands.Bot):
     async def on_disconnect(self):
         logging.info(f"[disconnect] Бот {self.user} отключился от discord")
 
+    @plug_afunc()
     async def on_message(self, message: discord.Message):
         await self.wait_until_ready()
 
@@ -102,6 +111,7 @@ class Bot(commands.Bot):
 
         await self.process_commands(message)
 
+    @plug_afunc()
     @full_db_using(is_async=True)
     async def on_guild_join(self, guild: discord.Guild):
         await self.wait_until_ready()
@@ -112,6 +122,7 @@ class Bot(commands.Bot):
             session.commit()
             session.close()
 
+    @plug_afunc()
     @full_db_using(is_async=True)
     async def on_guild_update(self, _, guild: discord.Guild):
         await self.wait_until_ready()
@@ -121,6 +132,7 @@ class Bot(commands.Bot):
             DBTools.update_guild(session, guild)
             session.commit()
 
+    @plug_afunc()
     @full_db_using(is_async=True)
     async def on_user_update(self, _, user: discord.User):
         await self.wait_until_ready()
@@ -130,6 +142,7 @@ class Bot(commands.Bot):
             DBTools.update_user(session, user)
             session.commit()
 
+    @plug_afunc()
     @full_db_using(is_async=True)
     async def on_member_update(self, _, member: discord.Member):
         await self.wait_until_ready()
@@ -140,6 +153,7 @@ class Bot(commands.Bot):
             # TODO: database is locked сделать async commit
             session.commit()
 
+    @plug_afunc()
     @full_db_using(is_async=True)
     async def on_member_join(self, member: discord.Member):
         await self.wait_until_ready()
@@ -169,6 +183,7 @@ class Bot(commands.Bot):
             DBTools.update_member(session, self.get_guild(member.guild.id).get_member(member.id))
             session.commit()
 
+    @plug_afunc()
     @full_db_using(is_async=True)
     async def on_member_remove(self, member: discord.Member):
         await self.wait_until_ready()
@@ -348,15 +363,15 @@ class Bot(commands.Bot):
 
     # Глобальное взаимодействие с данными
     def update_all_data(self, session: db_session.Session):
+        Guild.update_all(session, self.guilds)
+        User.update_all_users(session, self.users)
+        Member.update_all_members(session, self.get_all_members())
+        Channel.update_all_channels(session, self.get_all_channels())
+
+        roles = []
         for guild in self.guilds:
-            DBTools.update_guild(session, guild)
-
-        for member in self.get_all_members():
-            member: discord.Member
-            DBTools.update_user(session, member)
-            DBTools.update_member(session, member)
-
-        session.commit()
+            roles += guild.roles
+        Role.update_all(session, roles)
 
     # noinspection PyMethodMayBeStatic
     def delete_all_data(self, session: db_session.Session):

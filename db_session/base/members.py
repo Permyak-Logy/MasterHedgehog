@@ -1,35 +1,28 @@
 import datetime
-from typing import List
+from typing import Iterable
 
 import discord
-import sqlalchemy
-from sqlalchemy import orm
+from sqlalchemy import orm, Column, Integer, String, DateTime, ForeignKey
 
-from db_session import SqlAlchemyBase
+from db_session import SqlAlchemyBase, Session, ExtraTools
 from db_session.const import MIN_DATETIME
 
 
-class Member(SqlAlchemyBase):
+class Member(SqlAlchemyBase, ExtraTools):
     __tablename__ = 'members'
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
-    id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'),
-                           primary_key=True, nullable=False)
-    guild_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('guilds.id'),
-                                 primary_key=True, nullable=False)
-    display_name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    guild_id = Column(Integer, ForeignKey('guilds.id'), nullable=False)
+    display_name = Column(String, nullable=False)
 
-    joined_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.datetime.now)
+    joined_at = Column(DateTime, default=datetime.datetime.now, nullable=False)
+    
+    desktop_status = Column(String)
+    mobile_status = Column(String)
+    web_status = Column(String)
 
-    roles = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-
-    status = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)
-
-    cash = sqlalchemy.Column(sqlalchemy.BIGINT, nullable=False, default=0)
-    deposit = sqlalchemy.Column(sqlalchemy.BIGINT, nullable=False, default=0)
-
-    last_activity = sqlalchemy.Column(sqlalchemy.DateTime, default=MIN_DATETIME)
-
-    joined = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False, default=True)
+    last_activity = Column(DateTime, default=MIN_DATETIME)
 
     guild = orm.relation('Guild')
     user = orm.relation('User')
@@ -43,15 +36,56 @@ class Member(SqlAlchemyBase):
     def __str__(self):
         return repr(self)
 
-    def get_roles(self, bot: discord.Client) -> List[discord.Role]:
-        guild: discord.Guild = bot.get_guild(self.guild_id)
-        if guild is None:
-            return []
-        roles = self.roles
-        return list(filter(bool, map(guild.get_role, map(int, (roles or "").split(";")))))
+    @staticmethod
+    def update_all(session: Session, members: Iterable[discord.Member]):
+        ids = set((member.id, member.guild.id) for member in members)
+        for member_data in Member.get_all(session):
+            if (member_data.user_id, member_data.guild_id) not in ids:
+                session.delete(member_data)
 
-    def set_roles(self, roles: list):
-        if roles:
-            self.roles = ";".join(map(str, map(lambda r: r.id, roles)))
+        for member in members:
+            Member.update(session, member)
+
+    @staticmethod
+    def get(session: Session, member: discord.Member):
+        return session.query(Member).filter(Member.id == member.id, Member.guild_id == member.guild.id).first()
+
+    @staticmethod
+    def add(session: Session, member: discord.Member):
+        if Member.get(session, member):
+            raise ValueError("Участник уже есть в базе")
+        member_data = Member()
+        member_data.user_id = member.id
+        member_data.guild_id = member.guild.id
+        member_data.display_name = member.display_name
+        member_data.joined_at = member.joined_at
+        member_data.desktop_status = member.desktop_status
+        member_data.mobile_status = member.mobile_status
+        member_data.web_status = member.web_status
+
+        session.add(member_data)
+        return member_data
+
+    @staticmethod
+    def update(session: Session, member: discord.Member):
+        member_data = Member.get(session, member)
+        if not member_data:
+            member_data = Member.add(session, member)
         else:
-            self.roles = None
+            member_data.user_id = member.id
+            member_data.guild_id = member.guild.id
+            member_data.display_name = member.display_name
+            member_data.joined_at = member.joined_at
+            member_data.desktop_status = member.desktop_status
+            member_data.mobile_status = member.mobile_status
+            member_data.web_status = member.web_status
+        return member_data
+
+    @staticmethod
+    def delete(session: Session, member: discord.Member):
+        member_data = Member.get(session, member)
+        if not member_data:
+            raise ValueError("Такого участника нет в базе")
+        session.delete(member_data)
+        return member_data
+
