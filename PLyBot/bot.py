@@ -21,11 +21,11 @@ logging = logging.getLogger(__name__)
 
 
 class Bot(commands.Bot):
-    def __init__(self, *, db_file: Optional[str] = None, bot_type: TypeBot = TypeBot.other, **options):
+    def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, **options):
         super().__init__(intents=options.pop("intents", discord.Intents.all()),
                          help_command=options.pop('help_command', HelpCommand()),
                          **options)
-        self.__db_file = db_file
+        self.__db_connect = db_con
         self.__models = {}
 
         if bot_type == TypeBot.self:
@@ -53,7 +53,7 @@ class Bot(commands.Bot):
 
     @property
     def using_db(self) -> bool:
-        return bool(self.__db_file)
+        return bool(self.__db_connect)
 
     @property
     async def invite_link(self):
@@ -67,10 +67,9 @@ class Bot(commands.Bot):
     # Слушатели событий
     async def on_ready(self):
         if self.using_db:
-            session = db_session.create_session()
-            self.update_all_data(session)
-            session.commit()
-            session.close()
+            with db_session.create_session() as session:
+                self.update_all_data(session)
+                session.commit()
 
         if self.activity:
             await self.change_presence(activity=self.activity)
@@ -372,7 +371,7 @@ class Bot(commands.Bot):
 
     def run(self, *args, **kwargs):
         if self.using_db:
-            db_session.global_init(self.__db_file, self.__models)
+            db_session.global_init(self.__db_connect, self.__models)
         return super().run(*args, **kwargs)
 
 

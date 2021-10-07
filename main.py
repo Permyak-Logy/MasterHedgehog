@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -6,45 +7,44 @@ import discord
 from PLyBot import Bot, not_in
 from PLyBot.enums import TypeBot
 
+with open('config.json', encoding='utf8') as conf_file:
+    CONFIG = json.load(conf_file)
+
 
 # TODO: Сделать ограничения в функциях событиях при недоступных модулях
-
 def main():
-    c_log = logging.StreamHandler()
-    f_log = logging.FileHandler('logs\\bot.log', encoding='utf8')
-    # noinspection PyArgumentList
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
-                        handlers=[c_log, f_log])
-
+    logging_conf: dict = CONFIG['logging']
+    handlers_log = []
+    if logging_conf['output']['console']:
+        handlers_log.append(logging.StreamHandler())
+    if logging_conf['output']['file']:
+        handlers_log.append(logging.FileHandler(CONFIG['logging']['output']['file'], encoding='utf8'))
+    logging.basicConfig(level=logging.INFO, format=CONFIG['logging']['format'],
+                        handlers=handlers_log)
     logging.info("Start Program")
-    owners = [
-        403910550028943361,  # Permyak_Logy
-        548412818991349780,  # Evil Glitter
-        832894974227251240,  # Glitter Silk
-        510033548422545411,  # Mavisels
-        576037038042775563,  # Avoidman
-    ]
 
+    bot_conf: dict = CONFIG['bot']
     bot = Bot(
-        command_prefix="!!",
-        db_file='db\\mhdata.sqlite',
+        command_prefix=bot_conf['command_prefix'],
+        db_con=bot_conf['db_con'],
+        owner_ids=CONFIG['admins'],
+        activity=discord.Game(bot_conf['game_activity']),
+        bot_name=bot_conf['bot_name'],
+
         bot_type=TypeBot.both,
-        owner_ids=owners,
-        activity=discord.Game("кустики"),
-        version="Beta 2021.5.23",
-        bot_name="Хог",
-        permissions=8
+        permissions=8,  # == Администратор
+        version="Beta 2021.10.7"  # Дата 07.10.2021
     )
 
-    cogs = list(map(lambda x: f"cogs.{x[:-3]}",
-                    filter(not_in([
-                        '__init__.py', '__pycache__', 'warface.py', 'warframe.py'
-                    ]), os.listdir('cogs'))))
+    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warface.py', 'warframe.py']),
+                        os.listdir('cogs'))
+    cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names))
+
     cogs.append('PLyBot.info')
     bot.load_all_extensions(cogs)
 
-    # noinspection SpellCheckingInspection
-    bot.run('NjEzNjQ1NTkyMjQxMTExMDQw.XVz7_g.qj4oltJ5JApCXIW3i5SiHvHJ1xs')
+    with open('token.txt', encoding='utf8') as token_file:
+        bot.run(token_file.read())
 
 
 if __name__ == '__main__':

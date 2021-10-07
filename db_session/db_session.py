@@ -11,11 +11,11 @@ from .const import MAX_BIGINT, MIN_BIGINT
 logging = logging.getLogger(__name__)
 
 SqlAlchemyBase = dec.declarative_base()
-
 # noinspection PyTypeChecker
 __factory: orm.sessionmaker = None
 
 
+# __enter__ и __exit__ для функционирования с with для сессий
 def __enter__(self: Session) -> Session:
     return self
 
@@ -29,26 +29,21 @@ Session.__exit__ = __exit__
 
 
 # noinspection PyUnresolvedReferences
-def global_init(db_file, models: dict = None):
+def global_init(conn_str, models: dict = None):
     global __factory
 
     if __factory:
         # TODO: Перезагрузка базы данных
-        raise RuntimeError("База данных уже инициированна")
+        raise RuntimeError("База данных уже инициирована")
 
-    if not db_file or not db_file.strip():
-        raise Exception("Необходимо указать файл базы данных.")
+    if not conn_str or not conn_str.strip():
+        raise Exception("Необходимо указать подключение к базе данных.")
 
     from . import __all_models
     if models:
         for key, val in models.items():
             setattr(__all_models, key, val)
 
-    directory = os.path.split(db_file)[0]
-    if directory and not os.path.isdir(directory):
-        os.mkdir(directory)
-
-    conn_str = f'sqlite:///{db_file.strip()}?check_same_thread=False'
     logging.info(f"Подключение к базе данных по адресу {conn_str}")
 
     engine = sa.create_engine(conn_str, echo=False)

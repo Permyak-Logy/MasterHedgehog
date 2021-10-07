@@ -1,0 +1,22 @@
+{
+  "bot": {
+    "command_prefix": "!!",
+    "db_con": "sqlite:///db/mhdata.sqlite?check_same_thread=False",
+    "game_activity": "кустики",
+    "bot_name": "Хог"
+  },
+  "admins": [
+    403910550028943361,
+    548412818991349780,
+    832894974227251240,
+    510033548422545411,
+    576037038042775563
+  ],
+  "logging": {
+    "format": "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
+    "output": {
+      "console": true,
+      "file": "logs\\bot.log"
+    }
+  }
+}

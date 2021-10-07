@@ -77,7 +77,7 @@ class RoleForReaction(SqlAlchemyBase):
         self.roles = ",".join(filter(bool, [str(role.id) for role in roles])) or None
 
 
-class RolesMembers: # (SqlAlchemyBase):
+class RolesMembers:  # (SqlAlchemyBase):
     __tablename__ = "roles_members"
     config_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('role'))
 
@@ -390,16 +390,17 @@ class RolesCog(Cog, name='Роли'):
                                            description=f"У всех участников были сняты роли",
                                            colour=self.bot.colour_embeds))
 
+    @commands.group(name='auto_roles')
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    async def set_auto_roles(self):
+    async def auto_roles(self):
         pass
 
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    async def auto_roles(self):
+    async def set_auto_roles(self):
         pass
 
 
