@@ -2,5 +2,6 @@
 /ffmpeg
 /logs
 /other
+/__pycache__
 ideas
 token.txt
