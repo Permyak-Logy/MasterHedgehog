@@ -33,7 +33,7 @@ def main():
 
         bot_type=TypeBot.both,
         permissions=8,  # == Администратор
-        version="Beta 2021.10.7"  # Дата 07.10.2021
+        version="Beta 0.10"  # Дата 07.10.2021
     )
 
     cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warface.py', 'warframe.py']),

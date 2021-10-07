@@ -33,7 +33,8 @@ class Category(SqlAlchemyBase):
 
     @staticmethod
     def get(session: Session, category: discord.CategoryChannel):
-        return session.query(Category).filter(Category.id == category.id, Category.guild_id == category.guild.id).first()
+        return session.query(Category).filter(Category.id == category.id,
+                                              Category.guild_id == category.guild.id).first()
 
     @staticmethod
     def add(session: Session, category: discord.CategoryChannel):
@@ -62,7 +63,7 @@ class Category(SqlAlchemyBase):
         return channel_data
 
     @staticmethod
-    def update(session: Session, category: ChannelType):
+    def update(session: Session, category: discord.CategoryChannel):
         channel_data = Category.get(session, category)
         if not channel_data:
             channel_data = Category.add(session, category)
@@ -85,7 +86,7 @@ class Category(SqlAlchemyBase):
         return channel_data
 
     @staticmethod
-    def delete(session: Session, category: ChannelType):
+    def delete(session: Session, category: discord.CategoryChannel):
         channel_data = Category.get(session, category)
         if not channel_data:
             raise ValueError("Такого участника нет в базе")

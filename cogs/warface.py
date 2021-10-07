@@ -38,7 +38,7 @@ class WarfaceCog(Cog, name="WarfaceStats"):
         """
         joke2
         """
-        await ctx.send(f'a random koke {a} {b}')
+        await ctx.send(f'a random joke {a} {b}')
 
 
 def setup(bot: Bot):

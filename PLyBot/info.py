@@ -53,7 +53,8 @@ class InfoCog(Cog, name="Информация"):
             embed.set_author(name=owner.name, icon_url=owner.avatar_url)
             embed.set_footer(text="PyPLy ©", icon_url=owner.avatar_url)
             embed.add_field(name="Мой разработчик", value=f"{owner}")
-            embed.set_image(url="https://cdn.discordapp.com/attachments/653543360161644545/841752019199197264/PyPLy_Neon.png")
+            embed.set_image(
+                url="https://cdn.discordapp.com/attachments/653543360161644545/841752019199197264/PyPLy_Neon.png")
         await asyncio.sleep(1.5)
         await ctx.send(embed=embed)
 
@@ -113,7 +114,7 @@ class InfoCog(Cog, name="Информация"):
     async def have_access(self, ctx: Context,
                           channel: Union[discord.VoiceChannel, discord.TextChannel, discord.StageChannel]):
         """
-        Показывает участников коротые видят указанный канал
+        Показывает участников которые видят указанный канал
         """
         result = set()
         for member in ctx.guild.members:

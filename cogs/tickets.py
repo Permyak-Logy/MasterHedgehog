@@ -157,7 +157,7 @@ class TicketsCog(Cog, name='Билеты'):
 
                     message = await channel.send(f"{author.mention} Здравствуй!",
                                                  embed=discord.Embed(
-                                                     description="Какова прична твоего визита?\n"
+                                                     description="Какова причина твоего визита?\n"
                                                                  "Чтобы закрыть билет - 🔒",
                                                      colour=self.bot.colour_embeds))
                     await message.add_reaction('🔒')

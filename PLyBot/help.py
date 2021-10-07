@@ -74,7 +74,7 @@ class HelpCommand(commands.MinimalHelpCommand):
     def get_opening_note(self):
         command_name = self.invoked_with
         note = (
-            "Используй `{}{} [command]` Для получения иформации о команде\n"
+            "Используй `{}{} [command]` Для получения информации о команде\n"
             "Ты также можешь использовать `{}{} [category]` для большей информации о категории.\n"
             "Если ты не в курсе как работать и оформлять команды, "
             "то просто введи `{}syntax` и я объясню тебе это всё с примерами!"
@@ -82,7 +82,7 @@ class HelpCommand(commands.MinimalHelpCommand):
         return note
 
     async def command_not_found(self, string):
-        return "Комманда {} не найдена"
+        return "Команда {} не найдена"
 
     async def send_error_message(self, error):
         await self.get_destination().send(

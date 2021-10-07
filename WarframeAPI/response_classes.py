@@ -75,7 +75,7 @@ class VallisInfo:
             raise DictTypeError('VallisInfo', vallis_dict)
         for key in self._vallis_keys:
             if key not in vallis_dict.keys():
-                raise DictTypeError('VallisInfo', valliss_dict)
+                raise DictTypeError('VallisInfo', vallis_dict)
         self.id = vallis_dict['id']
         self.expiry = vallis_dict['expiry']
         self.isWarm = vallis_dict['isWarm']

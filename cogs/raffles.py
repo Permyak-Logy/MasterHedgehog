@@ -29,7 +29,7 @@ class RafflesCog(Cog, name="Розыгрыши"):
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=RafflesConfig)
 
-    @commands.command('розыгрышь_денег', aliases=['add_raffle_moneys', 'raffle_moneys'])
+    @commands.command('розыгрыш_денег', aliases=['add_raffle_moneys', 'raffle_moneys'])
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
     async def add_raffle_moneys(self, ctx: commands.Context, moneys: int, seconds: int, *title: str):
@@ -38,7 +38,7 @@ class RafflesCog(Cog, name="Розыгрыши"):
         (**!!ВНИМАНИЕ** Необходим доступный модуль 'Экономика')
         """
 
-        title = join_string(title, f"Внимание! Денежный розыгрышь!")
+        title = join_string(title, f"Внимание! Денежный розыгрыш!")
         assert seconds >= 0, "Время должно быть >= 0"
         await self._handle_raffle_moneys(ctx, moneys, seconds, title)
 
@@ -48,7 +48,7 @@ class RafflesCog(Cog, name="Розыгрыши"):
         assert economy_cog is not None, "Для работы этой команды необходим подключённый модуль 'Экономика'"
         assert await economy_cog.cog_check(ctx), "Вам не доступна эта команда"
 
-        from .economy import EconomyCog, DBEconomyTools
+        from .economy import EconomyCog, Balance
         economy_cog: EconomyCog
 
         with db_session.create_session() as session:
@@ -91,7 +91,7 @@ class RafflesCog(Cog, name="Розыгрыши"):
                     colour=discord.colour.Color.dark_purple()
                 )
                 await ctx.send(embed=embed)
-                DBEconomyTools.get_member_data(session, member).add_dep(moneys)
+                Balance.get(session, member).add_dep(moneys)
                 session.commit()
             break
         await message.delete()
@@ -136,7 +136,7 @@ class RafflesCog(Cog, name="Розыгрыши"):
         await message.delete()
 
     @commands.cooldown(1, 5)
-    @commands.command(name='розыгрышь', aliases=['add_raffle', 'raffle'])
+    @commands.command(name='розыгрыш', aliases=['add_raffle', 'raffle'])
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
@@ -145,7 +145,7 @@ class RafflesCog(Cog, name="Розыгрыши"):
         Создаёт розыгрыш на роль (seconds в сек, title не обязательно указывать)
         """
 
-        title = join_string(title, f"Внимание! Розыгрышь на роль!")
+        title = join_string(title, f"Внимание! Розыгрыш на роль!")
         assert seconds >= 0, "Время должно быть >= 0"
 
         assert ctx.author.top_role > role or ctx.author.guild_permissions.administrator, \

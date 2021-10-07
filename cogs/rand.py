@@ -20,7 +20,7 @@ class RandomConfig(SqlAlchemyBase, BaseConfigMix):
 
 class RandomCog(Cog, name='Случайности'):
     """
-    Модуль для получания различных случайностей!
+    Модуль для получения различных случайностей!
     """
 
     def __init__(self, bot: Bot):
@@ -40,14 +40,14 @@ class RandomCog(Cog, name='Случайности'):
     @commands.command()
     async def choice(self, ctx: commands.Context, *items):
         """
-        Выберает случаным образом один из элементов указаных через пробел
+        Выбирает случайным образом один из элементов указанных через пробел
         """
 
         assert len(items) > 0, "Нет предметов для выбора"
 
         item = random.choice(items)
         phrase = random.choice([
-            f'Ииии... я выбираю "{item}"',
+            f'Иии... я выбираю "{item}"',
             f'Мой выбор: "{item}"',
             f'Знаки указывают на "{item}"',
             f'{item}',
@@ -79,7 +79,7 @@ class RandomCog(Cog, name='Случайности'):
     @commands.command()
     async def random(self, ctx: commands.Context):
         """
-        Генерирует число в диапозоне [0.0:1.0]
+        Генерирует число в диапазоне [0.0:1.0]
         """
 
         await ctx.reply(str(random.random()))

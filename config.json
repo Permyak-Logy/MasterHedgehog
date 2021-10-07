@@ -1,7 +1,7 @@
 {
   "bot": {
     "command_prefix": "!!",
-    "db_con": "sqlite:///db/mhdata.sqlite?check_same_thread=False",
+    "db_con": "sqlite:///db/mh.sqlite?check_same_thread=False",
     "game_activity": "кустики",
     "bot_name": "Хог"
   },

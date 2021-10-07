@@ -47,7 +47,7 @@ class PermissionsCog(Cog, name="Права доступа"):
             cog = self.bot.get_cog(name)
         else:
             cog = command.cog
-        assert not (command is None and cog is None), "Неизвесный модуль или команда"
+        assert not (command is None and cog is None), "Неизвестный модуль или команда"
 
         if not isinstance(cog, Cog):
             assert command is None, "Команда не поддерживает настройку прав"
@@ -66,7 +66,7 @@ class PermissionsCog(Cog, name="Права доступа"):
         """
         Устанавливает допуск по одному из параметров
         Если command == "ALL" то вышлет настройки для модуля, иначе для команды
-        Если attr == "DEF" то выставит сначение по умолчанию, иначе будет изменять атрибут
+        Если attr == "DEF" то выставит значение по умолчанию, иначе будет изменять атрибут
         args параметры для атрибута (0 == false, 1 == true если bool тип), если не указан то по умолчанию
         (Указывается целочисленным параметром)
         """
@@ -75,7 +75,7 @@ class PermissionsCog(Cog, name="Права доступа"):
             cog = self.bot.get_cog(name)
         else:
             cog = command.cog
-        assert not (command is None and cog is None), "Неизвесный модуль или команда"
+        assert not (command is None and cog is None), "Неизвестный модуль или команда"
 
         check = isinstance(cog, Cog) and cog.cls_config is not None
         assert check or command is None, "Команда не поддерживает настройку прав"
@@ -163,7 +163,7 @@ class PermissionsCog(Cog, name="Права доступа"):
                 date = cog.get_config(session, ctx.guild).active_until
             else:
                 date = None
-            elem.append(f'активен{"=неограничено" if date is None else f"_до={date}"}')
+            elem.append(f'активен{"=неограниченно" if date is None else f"_до={date}"}')
 
             text.append(f'{name.ljust(len(max(self.bot.cogs.keys(), key=len)), " ")} [{"; ".join(elem)}]')
 

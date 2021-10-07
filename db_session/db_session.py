@@ -1,5 +1,4 @@
 import logging
-import os
 
 import sqlalchemy as sa
 import sqlalchemy.ext.declarative as dec
@@ -30,10 +29,8 @@ Session.__exit__ = __exit__
 
 
 class ExtraTools:
-    # @classmethod
-    # def get_all(cls, session: Session) -> list:
-    #     return session.query(cls).all()
     pass
+
 
 # noinspection PyUnresolvedReferences
 def global_init(conn_str, models: dict = None):
@@ -53,7 +50,7 @@ def global_init(conn_str, models: dict = None):
 
     logging.info(f"Подключение к базе данных по адресу {conn_str}")
 
-    engine = sa.create_engine(conn_str, echo=False)
+    engine = sa.create_engine(conn_str, echo=False, pool_pre_ping=True)
     __factory = orm.sessionmaker(bind=engine)
 
     SqlAlchemyBase.metadata.create_all(engine)

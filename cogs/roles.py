@@ -185,7 +185,7 @@ class RolesCog(Cog, name='Роли'):
     @commands.bot_has_permissions(manage_roles=True)
     async def auto_old_roles(self, ctx: Context):
         """
-        Переключатель автоматического востановления ролей на сервере при перезаходе
+        Переключатель автоматического восстановления ролей на сервере при перезаходе
         """
         with db_session.create_session() as session:
             config = self.get_config(session, ctx.guild)
@@ -198,7 +198,7 @@ class RolesCog(Cog, name='Роли'):
             session.commit()
             await ctx.send(embed=discord.Embed(title="Успешно", colour=self.bot.colour_embeds,
                                                description="Статус автоматической выдачи").add_field(
-                name="Статус автовыдачи",
+                name="Статус авто выдачи",
                 value="Вкл" if config.return_old_roles else "Выкл"))
 
     @commands.command(name='рольпореакции', aliases=['role_for_reaction', 'rfr', 'рпр'])
@@ -209,7 +209,7 @@ class RolesCog(Cog, name='Роли'):
         """
         Создаёт сообщение через которое можно получать роли по реакции
         """
-        assert 0 < len(roles) <= 10, "Кол-во ролей дожно быть от 1 до 10"
+        assert 0 < len(roles) <= 10, "Кол-во ролей должно быть от 1 до 10"
         assert all(map(lambda r: ctx.author.top_role > r, roles)) or ctx.guild.owner == ctx.author, \
             "Указанные роли должны быть ниже вашей"
         me = ctx.guild.get_member(self.bot.user.id)
@@ -310,7 +310,7 @@ class RolesCog(Cog, name='Роли'):
     @commands.bot_has_permissions(manage_roles=True)
     async def remove_role(self, ctx: commands.Context, *roles: discord.Role):
         """
-        Убирает указаные роли если это возможно
+        Убирает указанные роли если это возможно
         """
         session = db_session.create_session()
         config = self.get_config(session, ctx.guild)

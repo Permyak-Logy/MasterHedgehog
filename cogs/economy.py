@@ -11,9 +11,9 @@ from discord.ext import commands
 from discord.ext.commands import BucketType
 
 import db_session
-from PLyBot import Bot, Cog, join_string, DBTools, HRF, Context
+from PLyBot import Bot, Cog, join_string, HRF, Context
 from PLyBot.const import EMOJI_NUMBERS
-from db_session import BaseConfigMix, SqlAlchemyBase, bigint, MIN_DATETIME
+from db_session import BaseConfigMix, SqlAlchemyBase, bigint, MIN_DATETIME, Session
 
 
 # TODO: Роли бустеры
@@ -88,6 +88,11 @@ class Balance(SqlAlchemyBase):
     dep = sqlalchemy.Column(sqlalchemy.BigInteger, default=0, nullable=False)
 
     # member = orm.relationship("Member", back_populates="balance")
+
+    @staticmethod
+    def get(session: Session, member: discord.Member):
+        return session.query(Balance).filter(Balance.member_id == member.id,
+                                             Balance.guild_id == member.guild.id).first()
 
     def get_total(self) -> int:
         return self.cash + self.dep
@@ -214,7 +219,7 @@ class EconomyCog(Cog, name='Экономика'):
         людей и получать за это деньги. Учтите, что у этой работы есть свои риски;
 
         Риск: 55%, вы рискуете потерять часть денег.
-        -Минимальныц риск: -300 ; Максимальный: -600
+        -Минимальный риск: -300 ; Максимальный: -600
         -Минимальный заработок: 1000 ; Максимальный 3000 ; Отдых от работы 12 часов
         """
         d = {
@@ -255,10 +260,10 @@ class EconomyCog(Cog, name='Экономика'):
 
         d = {
             True: (random.choice([
-                "Сегодня стоялась стрелка между Русской Мафией и Мексиканской Мафией\n"
+                "Сегодня состоялась стрелка между Русской Мафией и Мексиканской Мафией\n"
                 "Из за недостатка людей, Мексиканская Мафия решила нанять тебя",
 
-                "Сегодня состаялся выезд на ВЗХ, из за навала работы, тебе предложили подменить Босса Украинской Мафии",
+                "Сегодня состоялся выезд на ВЗХ, из за навала работы, тебе предложили подменить Босса Украинской Мафии",
 
                 "Ограбление успешно! Твоя доля",
 
@@ -276,12 +281,12 @@ class EconomyCog(Cog, name='Экономика'):
                 "Босс Мафии: \"Прости, Джо в сделку не входил\"\n"
                 "На поиски вы потратили немалую сумму денег, но все оказалось зря",
 
-                "После очередной развозки контробанды, вас повязала полиция\n"
+                "После очередной развозки контрабанды, вас повязала полиция\n"
                 "К счастью, вам попался подкупной коп и вам удалось договориться",
 
                 "До вас уже кто то ограбил!",
 
-                "Твой товарищь был ранен на перестрелке!",
+                "Твой товарищ был ранен на перестрелке!",
 
                 "Вас накрыли! Ты единственный кто сбежал!"
 
@@ -295,7 +300,7 @@ class EconomyCog(Cog, name='Экономика'):
     async def steal(self, ctx: Context, member: discord.Member = None):
         """
         Попытаться ограбить кошелёк у другого участника.
-        Если провал то вы заплатите компенсанцию (0-100% Денег опонента)
+        Если провал то вы заплатите компенсацию (0-100% Денег оппонента)
         Шанс кражи 10%
         """
         assert ctx.author != member, "Ты не можешь себя обкрадывать"
@@ -331,17 +336,17 @@ class EconomyCog(Cog, name='Экономика'):
     @commands.guild_only()
     async def casino(self, ctx: Context, rate: str, money: int):
         """
-        Казино, ставте ваши деньги и ставку. Размер выйгрыша обратнопропорционален ставке
-        (чем меньше шанс выйгрыша, тем больше сам выйгрышь)
+        Казино, ставте ваши деньги и ставку. Размер выигрыша обратно пропорционален ставке
+        (чем меньше шанс выигрыша, тем больше сам выигрыш)
 
-        Ставка (rate) указывается например так: "1к10" или "2/5" или "7:20" (без ковычек)
+        Ставка (rate) указывается например так: "1к10" или "2/5" или "7:20" (без кавычек)
         """
         assert re.match(r'\d+[к/:]\d+', rate), "Неверный формат ставки"
         rate: list = list(map(int, rate.replace('к', '/').replace('/', ':').split(':')))
         assert all(map(lambda x: x > 0, rate)), "Числа в ставке должны быть больше 0"
         rate: int = rate[0] / rate[1]
         assert money > 0, "Сумма денег должна быть больше 0"
-        assert rate <= 0.5, "Шанс выйгрыша должен быть не более 50%"
+        assert rate <= 0.5, "Шанс выигрыша должен быть не более 50%"
 
         with db_session.create_session() as session:
             member_data = DBEconomyTools.get_balance_member(session, ctx.author)
@@ -423,7 +428,7 @@ class EconomyCog(Cog, name='Экономика'):
                 "Ты придумал носки с GPS и идея Выстрелила! Тысячи мужиков их купило, ты получаешь",
 
                 "Ты начал мыслить масштабно, создал ларек и начал торговать. "
-                "Акции росли, Деньги пошли верх, ты начал получать больше, появилось больше фелиалов"
+                "Акции росли, Деньги пошли верх, ты начал получать больше, появилось больше филиалов"
                 " и ты стал самым богатым человеком в твоём роду за всю историю!",
 
                 "Ты купил самолет и продал его дороже потом еще, потом еще больше, и у тебя авиакомпания",
@@ -451,7 +456,7 @@ class EconomyCog(Cog, name='Экономика'):
                 "```python\n"
                 "   Мы находимся в криминальном городе, вокруг воровство, обман, насилие. "
 
-                "Никому нельзя доверять, расчитывай только на себя.\n"
+                "Никому нельзя доверять, рассчитывай только на себя.\n"
                 "Работай, воруй, грабь банки, делай все, чтобы выйти победителем и получить славу. "
                 "Этому городу нужна новая легенда, возможно, это будешь ты!\n\n"
                 f"Город: {ctx.guild.name}\n"
@@ -499,7 +504,7 @@ class EconomyCog(Cog, name='Экономика'):
         Позволяет ограбить банк ограбив указанное кол-во ячеек (чем больше ячеек тем меньше шанс на успех).
         Чем больше средний показатель денег в непустых ячейках тем больше шанс ограбления.
         Если не удача то вы выплачиваете долг банку в размере 1% от всей суммы в банке.
-        Необходимо не иметь задолжностей в банке!
+        Необходимо не иметь долгов в банке!
 
         """
         with db_session.create_session() as session:
@@ -516,7 +521,7 @@ class EconomyCog(Cog, name='Экономика'):
                 member.add_cash(1000)
                 embed = discord.Embed(
                     title="Успех",
-                    description=f"Ты молодец. Сколько-то награбил, но нечайно посеял всё на улице. "
+                    description=f"Ты молодец. Сколько-то награбил, но нечаянно посеял всё на улице. "
                                 f"Жди обновы, но пока держи 1000 {config.currency_icon}!",
                     colour=discord.Colour.from_rgb(0, 255, 0)
                 )
@@ -557,7 +562,7 @@ class EconomyCog(Cog, name='Экономика'):
 
             embed = discord.Embed(
                 title="Перевод",
-                description=f"В банк зачисленно {HRF.number(value)} {config.currency_name}"
+                description=f"В банк зачислено {HRF.number(value)} {config.currency_name}"
             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
             embed.add_field(name="Осталось налички",
@@ -750,7 +755,7 @@ class EconomyCog(Cog, name='Экономика'):
     @commands.guild_only()
     async def buy(self, ctx: Context, item_id: int):
         """
-        Покупает предмет из маказина с указанным id
+        Покупает предмет из магазина с указанным id
         """
 
         assert item_id >= 1, "item_id должен быть >= 1"
@@ -848,7 +853,7 @@ class EconomyCog(Cog, name='Экономика'):
 
             embed = discord.Embed(
                 title="Изменение баланса",
-                description=f"{'Зачисленно' if a > 0 else 'Снято'} {HRF.number(value)} {config.currency_name}"
+                description=f"{'Зачислено' if a > 0 else 'Снято'} {HRF.number(value)} {config.currency_name}"
             )
             embed.set_author(name=member.display_name, icon_url=member.avatar_url)
             embed.add_field(name="Было", value=f"{HRF.number(member_data.get_total())} "
@@ -868,7 +873,7 @@ class EconomyCog(Cog, name='Экономика'):
     @commands.has_permissions(administrator=True)
     async def add_bal(self, ctx: Context, member: discord.Member, value: int, where: str = None):
         """
-        Ложит указанное кол-во денег на счёт участника (по умолчанию в dep)
+        Кладёт указанное кол-во денег на счёт участника (по умолчанию в dep)
         """
         await ctx.send(embed=await self.change_bal(member, value, 1, where or "dep"))
 
@@ -1004,7 +1009,7 @@ class EconomyCog(Cog, name='Экономика'):
                                 prizes.append(lot)
                                 break
 
-                    embed = discord.Embed(title="Твой выйгрышь", description=f"{member.mention} твои призы уже у тебя!")
+                    embed = discord.Embed(title="Твой выигрыш", description=f"{member.mention} твои призы уже у тебя!")
                     for i, lot in enumerate(prizes):
                         embed.add_field(name=f"#{i + 1}: {lot['name']}",
                                         value=channel.guild.get_role(lot['role_id']).mention, inline=False)
@@ -1081,10 +1086,10 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
 
             await ctx.reply(embed=discord.Embed(title="Активирован промокод").add_field(
-                name="Начисленно", value=HRF.number(code.moneys) + " " + config.currency_icon))
+                name="Начислено", value=HRF.number(code.moneys) + " " + config.currency_icon))
 
 
-class DBEconomyTools(DBTools):
+class DBEconomyTools:
     @staticmethod
     def get_features_member(session: db_session.Session, member: discord.Member) -> Optional[FeatureMember]:
         return session.query(FeatureMember).filter(FeatureMember.member_id == member.id,

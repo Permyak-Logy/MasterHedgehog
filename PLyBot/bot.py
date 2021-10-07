@@ -9,13 +9,10 @@ from discord.utils import get
 
 import db_session
 from db_session import Session, BaseConfigMix
-from db_session.base import User, Member, Guild, Channel, Role
+from db_session.base import User, Member, Guild, Channel, Role, Message
 from .enums import TypeBot
-from .extra import HRF, DBTools, full_db_using, plug_afunc
+from .extra import HRF, full_using_db, run_if_ready_db
 from .help import HelpCommand
-
-# TODO: Загрузка внешней базы данных
-# TODO: Роли участников в отдельной таблице
 
 logging = logging.getLogger(__name__)
 
@@ -59,7 +56,7 @@ class Bot(commands.Bot):
 
     @property
     async def invite_link(self):
-        assert self.user.bot, "Это не доступно для обчного пользователя"
+        assert self.user.bot, "Это не доступно для обычного пользователя"
 
         if self.__invite_link:
             return self.__invite_link
@@ -82,7 +79,6 @@ class Bot(commands.Bot):
             await self.change_presence(activity=self.activity)
 
         logging.info(f"Бот класса {self.__class__.__name__} готов к работе как \"{self.user}\"")
-        await self.logout()
 
     async def on_resumed(self):
         pass
@@ -93,81 +89,68 @@ class Bot(commands.Bot):
     async def on_disconnect(self):
         logging.info(f"[disconnect] Бот {self.user} отключился от discord")
 
-    @plug_afunc()
     async def on_message(self, message: discord.Message):
-        await self.wait_until_ready()
-
         if self.using_db:
             with db_session.create_session() as session:
                 session: Session
-                DBTools.update_msg(session, message)
-                DBTools.update_user(session, message.author)
+                Message.update(session, message)
+                User.update(session, message.author)
 
                 if isinstance(message.author, discord.Member):
-                    DBTools.update_member(session, message.author)
-                    DBTools.get_member_data(session, message.author).last_activity = message.created_at
+                    Member.update(session, message.author)
+                    Member.get(session, message.author).last_activity = message.created_at
 
                 session.commit()
 
         await self.process_commands(message)
 
-    @plug_afunc()
-    @full_db_using(is_async=True)
+    @run_if_ready_db(is_async=True)
+    @full_using_db(is_async=True)
     async def on_guild_join(self, guild: discord.Guild):
-        await self.wait_until_ready()
-
         logging.info(f"{self.user} joined on {guild}")
         with db_session.create_session() as session:
-            DBTools.update_guild(session, guild)
+            Guild.update(session, guild)
             session.commit()
-            session.close()
 
-    @plug_afunc()
-    @full_db_using(is_async=True)
+    @run_if_ready_db(is_async=True)
+    @full_using_db(is_async=True)
     async def on_guild_update(self, _, guild: discord.Guild):
-        await self.wait_until_ready()
-
         with db_session.create_session() as session:
-            session: Session
-            DBTools.update_guild(session, guild)
+            Guild.update(session, guild)
             session.commit()
 
-    @plug_afunc()
-    @full_db_using(is_async=True)
+    @run_if_ready_db(is_async=True)
+    @full_using_db(is_async=True)
     async def on_user_update(self, _, user: discord.User):
-        await self.wait_until_ready()
-
         with db_session.create_session() as session:
             session: Session
-            DBTools.update_user(session, user)
+            User.update(session, user)
             session.commit()
 
-    @plug_afunc()
-    @full_db_using(is_async=True)
+    @run_if_ready_db(is_async=True)
+    @full_using_db(is_async=True)
     async def on_member_update(self, _, member: discord.Member):
-        await self.wait_until_ready()
-
         with db_session.create_session() as session:
             session: Session
-            DBTools.update_member(session, member)
+            Member.update(session, member)
             # TODO: database is locked сделать async commit
             session.commit()
 
-    @plug_afunc()
-    @full_db_using(is_async=True)
+    @run_if_ready_db(is_async=True)
+    @full_using_db(is_async=True)
     async def on_member_join(self, member: discord.Member):
         await self.wait_until_ready()
         # TODO: Выдача ролей при перезаходе. Убрать костыль
         with db_session.create_session() as session:
             session: Session
-            DBTools.update_user(session, member)
+            User.update(session, member)
 
             try:
                 cog: Cog = self.get_cog('Роли')
                 config = cog.get_config(session, member.guild)
                 if config.check_active_until():
 
-                    data = DBTools.get_member_data(session, member)
+                    data = Member.get(session, member)
 
                     # noinspection PyUnresolvedReferences
                     if config.return_old_roles:
@@ -180,11 +163,11 @@ class Bot(commands.Bot):
             except AttributeError:
                 pass
 
-            DBTools.update_member(session, self.get_guild(member.guild.id).get_member(member.id))
+            Member.update(session, self.get_guild(member.guild.id).get_member(member.id))
             session.commit()
 
-    @plug_afunc()
-    @full_db_using(is_async=True)
+    @run_if_ready_db(is_async=True)
+    @full_using_db(is_async=True)
     async def on_member_remove(self, member: discord.Member):
         await self.wait_until_ready()
         # TODO: Избавится от костыля
@@ -201,7 +184,7 @@ class Bot(commands.Bot):
                 if not config.check_active_until():
                     raise BreakError()
 
-                data = DBTools.get_member_data(session, member)
+                data = Member.get(session, member)
                 # noinspection PyUnresolvedReferences
                 if not config.return_old_roles:
                     raise BreakError()
@@ -211,7 +194,7 @@ class Bot(commands.Bot):
                 data.joined = False
 
             except (AttributeError, BreakError):
-                DBTools.delete_member(session, member)
+                Member.delete(session, member)
 
             session.commit()
 
@@ -235,7 +218,7 @@ class Bot(commands.Bot):
             elif isinstance(original, AssertionError):
                 embed.add_field(name="Сообщение", value=str(original))
             else:
-                embed.add_field(name="Сообщение", value="Внутряняя ошибка в команде")
+                embed.add_field(name="Сообщение", value="Внутренняя ошибка в команде")
                 embed.add_field(name="Output", value="`{}: {}`".format(type(original).__name__, original))
                 await super().on_command_error(ctx, exception)
         elif isinstance(exception, commands.BadArgument):
@@ -263,9 +246,9 @@ class Bot(commands.Bot):
                 embed.add_field(name="Сообщение",
                                 value=f"{exception.argument} не является распознанной логической опцией")
             elif isinstance(exception, commands.PartialEmojiConversionFailure):
-                embed.add_field(name="Сообщение", value=f"Неудалось преобразовать {exception.argument} в эмодзи")
+                embed.add_field(name="Сообщение", value=f"Не удалось преобразовать {exception.argument} в эмодзи")
             else:
-                embed.add_field(name="Сообщение", value="Неверный тип одного из агрументов ")
+                embed.add_field(name="Сообщение", value="Неверный тип одного из аргументов ")
                 embed.add_field(name="Помощник", value=(
                     "Используй `{}help {}` чтобы узнать как правильно оформлять команду".format(
                         self.command_prefix, ctx.invoked_with)))
@@ -273,7 +256,7 @@ class Bot(commands.Bot):
             if isinstance(exception, commands.NotOwner):
                 embed.add_field(name="Сообщение", value="Эта команда доступна только разработчикам")
             elif isinstance(exception, commands.PrivateMessageOnly):
-                embed.add_field(name="Сообщение", value="Эта команда не доступна в груповых чатах")
+                embed.add_field(name="Сообщение", value="Эта команда не доступна в групповых чатах")
             elif isinstance(exception, commands.NoPrivateMessage):
                 embed.add_field(name="Сообщение", value="Эта команда не доступна в личных чатах")
             elif isinstance(exception, commands.BotMissingPermissions):
@@ -289,7 +272,7 @@ class Bot(commands.Bot):
         elif isinstance(exception, commands.CommandOnCooldown):
             embed.add_field(
                 name="Сообщение",
-                value=f"Погодь остынь! Повтори попытку через {HRF.time(timedelta(seconds=exception.retry_after))}"
+                value=f"Погоди остынь! Повтори попытку через {HRF.time(timedelta(seconds=exception.retry_after))}"
             )
 
         else:
@@ -314,7 +297,7 @@ class Bot(commands.Bot):
             raise ValueError("Укажите классы моделей")
         for model in models:
             if model.__name__ in self.__models:
-                raise ValueError(f"Модель {model.__name__} уже зарегестрирована или передана дважды")
+                raise ValueError(f"Модель {model.__name__} уже зарегистрирована или передана дважды")
             self.__models[model.__name__] = model
 
     def get_voice_client(self, guild: discord.Guild) -> Optional[VoiceClient]:
@@ -347,7 +330,7 @@ class Bot(commands.Bot):
         self.add_command(command)
         return command
 
-    # Взаимодействие с когами
+    # Взаимодействие с cogs
     def load_all_extensions(self, filenames: list):
         for filename in filenames:
             try:
@@ -364,14 +347,15 @@ class Bot(commands.Bot):
     # Глобальное взаимодействие с данными
     def update_all_data(self, session: db_session.Session):
         Guild.update_all(session, self.guilds)
-        User.update_all_users(session, self.users)
-        Member.update_all_members(session, self.get_all_members())
-        Channel.update_all_channels(session, self.get_all_channels())
+        User.update_all(session, self.users)
+        Member.update_all(session, self.get_all_members())
+        Channel.update_all(session, self.get_all_channels())
 
         roles = []
         for guild in self.guilds:
             roles += guild.roles
         Role.update_all(session, roles)
+        logging.info('Update all data is completed')
 
     # noinspection PyMethodMayBeStatic
     def delete_all_data(self, session: db_session.Session):
@@ -379,7 +363,8 @@ class Bot(commands.Bot):
         [m.delete() for m in session.query(Member).all()]
         [u.delete() for u in session.query(User).all()]
 
-    # noinspection PyMethodMayBeStatic
+    # TODO: Сделать
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def prefix(self, message: discord.Message):
         with db_session.create_session() as session:
             pass
@@ -413,7 +398,7 @@ class Cog(commands.Cog, name="Без названия"):
     def using_db(self):
         return self.bot.using_db
 
-    @full_db_using(default=True, is_async=True)
+    @full_using_db(default_return=True, is_async=True)
     async def cog_check(self, ctx):
         """
         Базовая проверка для команд в категории
@@ -425,7 +410,7 @@ class Cog(commands.Cog, name="Без названия"):
             session: db_session.Session
 
             async def check_guild(guild_: discord.Guild) -> bool:
-                if DBTools.get_guild_data(session, guild_).ban_activity:
+                if Guild.get(session, guild_).ban_activity:
                     return False
                 if self.cls_config is not None:
                     config = self.update_config(session, guild_)
@@ -470,15 +455,15 @@ class Cog(commands.Cog, name="Без названия"):
                 logging.info(f'{guild} has been added in table "{self.cls_config.__tablename__}"')
 
     # Методы для работы с конфигами категории
-    @full_db_using()
+    @full_using_db()
     def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[BaseConfigMix]:
-        assert self.cls_config, "Метод может быть использован только при определённом заранье cls_config"
+        assert self.cls_config, "Метод может быть использован только при определённом заранее cls_config"
         guild_id = guild.id if isinstance(guild, discord.Guild) else guild
         return session.query(self.cls_config).filter(self.cls_config.guild_id == guild_id).first()
 
-    @full_db_using()
+    @full_using_db()
     def update_config(self, session: db_session, guild: discord.Guild):  # TODO: Утечка скорости (Много повторов)
-        assert self.cls_config, "Метод может быть использован только при определённом заранье cls_config"
+        assert self.cls_config, "Метод может быть использован только при определённом заранее cls_config"
 
         config = self.get_config(session, guild)
 
@@ -497,7 +482,7 @@ class Cog(commands.Cog, name="Без названия"):
                 if not access[key]:
                     del access[key]
 
-            # Добавляем всё недостоющее
+            # Добавляем всё недостающее
             for command in self.get_commands():
                 command: commands.Command
                 # print(command, command.parents)

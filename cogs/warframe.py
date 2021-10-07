@@ -18,6 +18,7 @@ class WarframeCog(Cog, name="Warframe"):
     def __init__(self, bot: Bot):
         super(WarframeCog, self).__init__(bot)
 
+    # noinspection PyUnusedLocal
     @commands.command()
     async def void_trader_info(self, ctx: Context, platform: wf_api = wf_api("pc")):
         """

@@ -86,7 +86,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         date в формате "ММ/ДД/ГГ"
         """
         guild = self.bot.get_guild(guild)
-        assert isinstance(guild, discord.Guild), "Неизвесный сервер"
+        assert isinstance(guild, discord.Guild), "Неизвестный сервер"
 
         cog = self.bot.get_cog(cog)
         assert isinstance(cog, Cog) and cog.cls_config is not None, "Данный модуль не работает с базой данных"
@@ -118,7 +118,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
     @commands.is_owner()
     async def get_cog_active_until(self, ctx: Context, guild: int, cog: str):
         guild = self.bot.get_guild(guild)
-        assert isinstance(guild, discord.Guild), "Неизвесный сервер"
+        assert isinstance(guild, discord.Guild), "Неизвестный сервер"
 
         cog = self.bot.get_cog(cog)
         assert isinstance(cog, Cog) and cog.cls_config is not None, "Данный модуль не работает с базой данных"
@@ -134,7 +134,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             embed.description = embed.description.format(cog=cog, msg=f"неограниченно")
         await ctx.send(embed=embed)
 
-    # TODO: Сделать бан гильдии, разбан гильдии, отправка собщения пользователю, перезагрузка
+    # TODO: Сделать бан гильдии, разбан гильдии, отправка сообщения пользователю, перезагрузка
     @commands.command()
     @commands.is_owner()
     async def ban_guild(self, ctx: Context, guild: discord.Guild = None):
@@ -160,7 +160,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                 except Forbidden as E:
                     await ctx.send(str(E))
                 else:
-                    await ctx.send("Доставленно!")
+                    await ctx.send("Доставлено!")
 
     @commands.command(name="перезагрузка", aliases=['reboot'])
     @commands.is_owner()

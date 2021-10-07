@@ -42,13 +42,13 @@ class ModerationConfig(SqlAlchemyBase, BaseConfigMix):
 
 class ModerationCog(Cog, name="Модерация"):
     """
-    Модуль модерации. Он содержит в себе прстой набор команд для модерирования сервера.
+    Модуль модерации. Он содержит в себе простой набор команд для модерирования сервера.
     Если вы раннее не работали с этим модулем, то вам следует установить для начала роль для мьюта
-    с помощью `!!мьютроль @Роль`, иначле вы не сможете воспользоваться командой `мьют`.
+    с помощью `!!мьютроль @Роль`, иначе вы не сможете воспользоваться командой `мьют`.
 
     В некоторые команды можно указывать время. Это время указывается в виде Xq где X это число (Если дробь то точку
     использовать), а q это первая буква единиц измерений с маленькой буквы. На данный момент доступно
-    определение дней (д), часов (ч), минут (м), секунтд (с)
+    определение дней (д), часов (ч), минут (м), секунд (с)
     """
 
     def __init__(self, bot: Bot):
@@ -65,7 +65,7 @@ class ModerationCog(Cog, name="Модерация"):
     async def ban(self, ctx: commands.Context, member: discord.Member, time: str = "F", *reason: str):
         """
         Банит  участника сервера. Если был указано время не равное "F",
-        то он забанит лишь на это время, а после сниметает бан.
+        то он забанит лишь на это время, а после снимает бан.
         Можно также указать причину, но это не обязательно.
         """
 
@@ -171,7 +171,7 @@ class ModerationCog(Cog, name="Модерация"):
             if limit == -1:
                 limit = None
 
-            assert limit is None or limit >= 0, "Указанный лимит дожен быть >= 0  (или == -1)"
+            assert limit is None or limit >= 0, "Указанный лимит должен быть >= 0  (или == -1)"
             await ctx.channel.purge(limit=limit, check=check)
 
             embed = discord.Embed(
@@ -258,7 +258,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.bot_has_permissions(manage_roles=True)
     async def mute(self, ctx: commands.Context, member: discord.Member, time: str = "F", *reason: str):
         """
-        Мьютит участника (time указывается в виде числа и едюизмерений
+        Мьютит участника (time указывается в виде числа и единиц измерений
         например: 1ч, 2д, 3с, 120м. (Единицы измерения: д, ч, м, с)
         или можно указать 'F' и тогда будет срок бессрочно)
         """
@@ -302,7 +302,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.bot_has_permissions(manage_roles=True)
     async def unmute(self, ctx: commands.Context, member: discord.Member, *reason: str):
         """
-        Снимает мьют с учасника если таковой имеется
+        Снимает мьют с участника если таковой имеется
         """
         reason = join_string(reason, default="Не указана")
         guild: discord.Guild = ctx.guild

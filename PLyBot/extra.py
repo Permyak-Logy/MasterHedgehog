@@ -2,13 +2,7 @@ import datetime
 import gc
 import logging
 import re
-from typing import Union, Optional, Type, Iterable, Callable, List
-
-import discord
-from discord import Status
-
-import db_session
-from db_session.base import Guild, Member, User, Message
+from typing import Union, Optional, Type, Iterable, Callable
 
 logging = logging.getLogger(__name__)
 
@@ -106,74 +100,40 @@ class HRF:
         return str(number)
 
 
-class DBTools:
-    # Некоторые манипуляции с бд о участниках серверов
+def full_using_db(*, default_return=None, is_async=False):
+    """Декоратор СТРОГО для методов класса PLyBot.bot.Bot"""
 
-    # @staticmethod
-    # def get_msg_data(session: db_session.Session, message: discord.Message) -> Optional[Message]:
-    #     return session.query(Message).filter(Message.id == message.id).first()
-    # @staticmethod
-    # def add_msg(session: db_session.Session, message: discord.Message) -> Message:
-    #     if DBTools.get_msg_data(session, message):
-    #         raise ValueError("Такое сообщение уже есть")
-    #     msg = Message()
-    #     msg.id = message.id
-    #     if message.guild:
-    #         msg.guild = message.guild.id
-    #     msg.author = message.author.id
-    #     msg.channel = message.channel.id
-    #     msg.content = message.content
-    #     msg.has_mentions = bool(message.mentions)
-    #     msg.has_mentions_roles = bool(message.role_mentions)
-    #     msg.has_mentions_everyone = bool(message.mention_everyone)
-    #     msg.timestamp = message.created_at.timestamp()
-    #     session.add(msg)
-    #     return msg
-    # @staticmethod
-    # def update_msg(session: db_session.Session, message: discord.Message) -> Message:
-    #     msg = DBTools.get_msg_data(session, message)
-    #     if not msg:
-    #         msg = DBTools.add_msg(session, message)
-    #     else:
-    #         msg.id = message.id
-    #         if message.guild:
-    #             msg.guild = message.guild.id
-    #         msg.author = message.author.id
-    #         msg.channel = message.channel.id
-    #         msg.content = message.content
-    #         msg.has_mentions = bool(message.mentions)
-    #         msg.has_mentions_roles = bool(message.role_mentions)
-    #         msg.has_mentions_everyone = bool(message.mention_everyone)
-    #         msg.timestamp = message.created_at.timestamp()
-    #     return msg
-    # @staticmethod
-    # def delete_msg(session: db_session.Session, message: discord.Message) -> Message:
-    #     m = DBTools.get_msg_data(session, message)
-    #     if not m:
-    #         raise ValueError("Такого сообщения нет в базе")
-    #     session.delete(m)
-    #     return m
-    pass
-
-
-def full_db_using(*, default=None, is_async=False):
     def wp(func):
-        nonlocal default
-
         if is_async:
             async def new(self, *args, **kwargs):
-                nonlocal default
-                if not self.using_db:
-                    return default
-                else:
+                if self.using_db:
                     return await func(self, *args, **kwargs)
+                return default_return
         else:
             def new(self, *args, **kwargs):
-                nonlocal default
-                if not self.using_db:
-                    return default
-                else:
+                if self.using_db:
                     return func(self, *args, **kwargs)
+                return default_return
+
+        return new
+
+    return wp
+
+
+def run_if_ready_db(*, default_return=None, is_async=False):
+    """Декоратор СТРОГО для методов класса PLyBot.bot.Bot"""
+
+    def wp(func):
+        if is_async:
+            async def new(self, *args, **kwargs):
+                if self.ready_db:
+                    return await func(self, *args, **kwargs)
+                return default_return
+        else:
+            def new(self, *args, **kwargs):
+                if self.ready_db:
+                    return func(self, *args, **kwargs)
+                return default_return
         return new
 
     return wp
@@ -193,7 +153,7 @@ def plug_afunc(res_default=None):
         nonlocal res_default
         logging.warning(f"use plug afunc {func}. returned: '{repr(res_default)}'")
 
-        async def wp(*args, **kwargs):
+        async def wp(*_, **__):
             return res_default
 
         return wp

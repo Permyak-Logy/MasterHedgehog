@@ -27,9 +27,6 @@ class Member(SqlAlchemyBase, ExtraTools):
     guild = orm.relation('Guild')
     user = orm.relation('User')
 
-    # feature = orm.relationship("FeatureMember", uselist=False, back_populates="member")
-    # balance = orm.relationship("Balance", uselist=False, back_populates="member")
-
     def __repr__(self):
         return f"Member(id={self.id} guild={self.guild} balance={self.get_balance()})"
 
@@ -48,7 +45,7 @@ class Member(SqlAlchemyBase, ExtraTools):
 
     @staticmethod
     def get(session: Session, member: discord.Member):
-        return session.query(Member).filter(Member.id == member.id, Member.guild_id == member.guild.id).first()
+        return session.query(Member).filter(Member.user_id == member.id, Member.guild_id == member.guild.id).first()
 
     @staticmethod
     def add(session: Session, member: discord.Member):
@@ -59,9 +56,9 @@ class Member(SqlAlchemyBase, ExtraTools):
         member_data.guild_id = member.guild.id
         member_data.display_name = member.display_name
         member_data.joined_at = member.joined_at
-        member_data.desktop_status = member.desktop_status
-        member_data.mobile_status = member.mobile_status
-        member_data.web_status = member.web_status
+        member_data.desktop_status = str(member.desktop_status)
+        member_data.mobile_status = str(member.mobile_status)
+        member_data.web_status = str(member.web_status)
 
         session.add(member_data)
         return member_data
@@ -76,9 +73,9 @@ class Member(SqlAlchemyBase, ExtraTools):
             member_data.guild_id = member.guild.id
             member_data.display_name = member.display_name
             member_data.joined_at = member.joined_at
-            member_data.desktop_status = member.desktop_status
-            member_data.mobile_status = member.mobile_status
-            member_data.web_status = member.web_status
+            member_data.desktop_status = str(member.desktop_status)
+            member_data.mobile_status = str(member.mobile_status)
+            member_data.web_status = str(member.web_status)
         return member_data
 
     @staticmethod
@@ -88,4 +85,3 @@ class Member(SqlAlchemyBase, ExtraTools):
             raise ValueError("Такого участника нет в базе")
         session.delete(member_data)
         return member_data
-

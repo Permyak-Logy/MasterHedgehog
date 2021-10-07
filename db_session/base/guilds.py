@@ -15,9 +15,9 @@ class Guild(SqlAlchemyBase, ExtraTools):
     owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
 
     mfa_level = Column(Integer, nullable=False)
-    verification_level = Column(Integer, nullable=False)
+    verification_level = Column(String, nullable=False)
     region = Column(String, nullable=False)
-    icon = Column(String, nullable=False)
+    icon = Column(String)
 
     afk_channel = Column(Integer, ForeignKey('channels.id'))
 
@@ -33,14 +33,11 @@ class Guild(SqlAlchemyBase, ExtraTools):
 
     @staticmethod
     def update_all(session: Session, guilds: Iterable[discord.Guild]):
-        ids = set(guild.id for guild in guilds)
         for guild_data in Guild.get_all(session):
-            if guild_data.id not in ids:
-                # TODO: Очистка участников, ролей и каналов гильдии
-                session.delete(guild_data)
+            session.delete(guild_data)
 
         for guild in guilds:
-            Guild.update(session, guild)
+            Guild.add(session, guild)
 
     @staticmethod
     def get(session: Session, guild: discord.Guild):
@@ -56,8 +53,8 @@ class Guild(SqlAlchemyBase, ExtraTools):
         guild_data.owner_id = guild.owner_id
         guild_data.name = guild.name
         guild_data.mfa_level = guild.mfa_level
-        guild_data.verification_level = guild.verification_level
-        guild_data.region = guild.region
+        guild_data.verification_level = str(guild.verification_level)
+        guild_data.region = str(guild.region)
         guild_data.icon = guild.icon
         guild_data.afk_channel = guild.afk_channel.id if guild.afk_channel else None
         guild_data.default_role = guild.default_role.id
@@ -75,8 +72,8 @@ class Guild(SqlAlchemyBase, ExtraTools):
             guild_data.owner_id = guild.owner_id
             guild_data.name = guild.name
             guild_data.mfa_level = guild.mfa_level
-            guild_data.verification_level = guild.verification_level
-            guild_data.region = guild.region
+            guild_data.verification_level = str(guild.verification_level)
+            guild_data.region = str(guild.region)
             guild_data.icon = guild.icon
             guild_data.afk_channel = guild.afk_channel.id if guild.afk_channel else None
             guild_data.default_role = guild.default_role.id
@@ -85,8 +82,8 @@ class Guild(SqlAlchemyBase, ExtraTools):
 
     @staticmethod
     def delete(session: Session, guild: discord.Guild):
-        guild = Guild.get_guild(session, guild)
-        if not guild:
+        guild_data = Guild.get(session, guild)
+        if not guild_data:
             raise ValueError("Такого сервера нет в базе")
-        session.delete(guild)
-        return guild
+        session.delete(guild_data)
+        return guild_data
