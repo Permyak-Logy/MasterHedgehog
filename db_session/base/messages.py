@@ -7,9 +7,8 @@ class Message(SqlAlchemyBase):
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
 
-    guild = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('guilds.id'))
-    author = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('members.id'), nullable=False)
-    channel = sqlalchemy.Column(sqlalchemy.Integer)
+    author = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'), nullable=False)
+    channel = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('channels.id'))
 
     content = sqlalchemy.Column(sqlalchemy.String, nullable=False)
 
@@ -17,4 +16,4 @@ class Message(SqlAlchemyBase):
     has_mentions_roles = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False, default=False)
     has_mentions_everyone = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False, default=False)
 
-    timestamp = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
+    created_at = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)

@@ -10,6 +10,9 @@ from PLyBot.enums import TypeBot
 # TODO: Сделать ограничения в функциях событиях при недоступных модулях
 
 def main():
+    if os.path.isfile('db\\database.sqlite'):
+        os.remove('db\\database.sqlite')
+
     c_log = logging.StreamHandler()
     f_log = logging.FileHandler('logs\\bot.log', encoding='utf8')
     # noinspection PyArgumentList
@@ -27,7 +30,7 @@ def main():
 
     bot = Bot(
         command_prefix="!!",
-        db_file='db\\mhdata.sqlite',
+        db_file='db\\database.sqlite',
         bot_type=TypeBot.both,
         owner_ids=owners,
         activity=discord.Game("кустики"),
@@ -36,12 +39,12 @@ def main():
         permissions=8
     )
 
-    cogs = list(map(lambda x: f"cogs.{x[:-3]}",
-                    filter(not_in([
-                        '__init__.py', '__pycache__', 'warface.py', 'warframe.py'
-                    ]), os.listdir('cogs'))))
-    cogs.append('PLyBot.info')
-    bot.load_all_extensions(cogs)
+    # cogs = list(map(lambda x: f"cogs.{x[:-3]}",
+    #                 filter(not_in([
+    #                     '__init__.py', '__pycache__', 'warface.py', 'warframe.py'
+    #                 ]), os.listdir('cogs'))))
+    # cogs = ['PLyBot.info']
+    # bot.load_all_extensions(cogs)
 
     # noinspection SpellCheckingInspection
     bot.run('NjEzNjQ1NTkyMjQxMTExMDQw.XVz7_g.qj4oltJ5JApCXIW3i5SiHvHJ1xs')

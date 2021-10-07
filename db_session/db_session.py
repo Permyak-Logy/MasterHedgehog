@@ -12,6 +12,8 @@ logging = logging.getLogger(__name__)
 
 SqlAlchemyBase = dec.declarative_base()
 
+SqlAlchemyBase.get_all = classmethod(lambda cls, session: session.query(cls).all())
+
 # noinspection PyTypeChecker
 __factory: orm.sessionmaker = None
 
@@ -27,6 +29,12 @@ def __exit__(self: Session, *_, **__):
 Session.__enter__ = __enter__
 Session.__exit__ = __exit__
 
+
+class ExtraTools:
+    # @classmethod
+    # def get_all(cls, session: Session) -> list:
+    #     return session.query(cls).all()
+    pass
 
 # noinspection PyUnresolvedReferences
 def global_init(db_file, models: dict = None):
