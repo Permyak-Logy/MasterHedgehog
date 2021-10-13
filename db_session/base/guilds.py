@@ -1,28 +1,21 @@
 from typing import Iterable
 
 import discord
-from sqlalchemy import orm, Column, Integer, ForeignKey, String
+import sqlalchemy
+from sqlalchemy import orm
 
-from db_session import SqlAlchemyBase, Session, ExtraTools
+import db_session
+from db_session import SqlAlchemyBase
 
 
-class Guild(SqlAlchemyBase, ExtraTools):
+class Guild(SqlAlchemyBase):
     __tablename__ = 'guilds'
 
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, nullable=False)
+    owner = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'), nullable=False)
+    name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
 
-    name = Column(String, nullable=False)
-    owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-
-    mfa_level = Column(Integer, nullable=False)
-    verification_level = Column(String, nullable=False)
-    region = Column(String, nullable=False)
-    icon = Column(String)
-
-    afk_channel = Column(Integer, ForeignKey('channels.id'))
-
-    default_role = Column(Integer, ForeignKey('roles.id'))
-
+    ban_activity = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
     members = orm.relation("Member", back_populates='guild')
 
     def __repr__(self):
@@ -32,58 +25,43 @@ class Guild(SqlAlchemyBase, ExtraTools):
         return repr(self)
 
     @staticmethod
-    def update_all(session: Session, guilds: Iterable[discord.Guild]):
+    def get(session: db_session.Session, guild: discord.Guild):
+        return session.query(Guild).filter(Guild.id == guild.id).first()
+
+    @staticmethod
+    def insert(session: db_session.Session, guild: discord.Guild):
+        if Guild.get(session, guild):
+            raise ValueError("Такой сервер уже есть")
+        g = Guild()
+        g.id = guild.id
+        g.owner = guild.owner_id
+        g.name = guild.name
+        session.add(g)
+        return g
+
+    @staticmethod
+    def update(session: db_session.Session, guild: discord.Guild):
+        g = Guild.get(session, guild)
+        if not g:
+            g = Guild.insert(session, guild)
+        else:
+            g.id = guild.id
+            g.name = guild.name
+            g.owner = guild.owner_id
+        return g
+
+    @staticmethod
+    def delete(session: db_session.Session, guild: discord.Guild):
+        g = Guild.get(session, guild)
+        if not g:
+            raise ValueError("Такого сервера нет в базе")
+        session.delete(g)
+        return g
+
+    @staticmethod
+    def update_all(session: db_session.Session, guilds: Iterable[discord.Guild]):
         for guild_data in Guild.get_all(session):
             session.delete(guild_data)
 
         for guild in guilds:
             Guild.add(session, guild)
-
-    @staticmethod
-    def get(session: Session, guild: discord.Guild):
-        return session.query(Guild).filter(Guild.id == guild.id).first()
-
-    @staticmethod
-    def add(session: Session, guild: discord.Guild):
-        if Guild.get(session, guild):
-            raise ValueError("Такой сервер уже есть")
-
-        guild_data = Guild()
-        guild_data.id = guild.id
-        guild_data.owner_id = guild.owner_id
-        guild_data.name = guild.name
-        guild_data.mfa_level = guild.mfa_level
-        guild_data.verification_level = str(guild.verification_level)
-        guild_data.region = str(guild.region)
-        guild_data.icon = guild.icon
-        guild_data.afk_channel = guild.afk_channel.id if guild.afk_channel else None
-        guild_data.default_role = guild.default_role.id
-
-        session.add(guild_data)
-        return guild_data
-
-    @staticmethod
-    def update(session: Session, guild: discord.Guild):
-        guild_data = Guild.get(session, guild)
-        if not guild_data:
-            guild_data = Guild.add(session, guild)
-        else:
-            guild_data.id = guild.id
-            guild_data.owner_id = guild.owner_id
-            guild_data.name = guild.name
-            guild_data.mfa_level = guild.mfa_level
-            guild_data.verification_level = str(guild.verification_level)
-            guild_data.region = str(guild.region)
-            guild_data.icon = guild.icon
-            guild_data.afk_channel = guild.afk_channel.id if guild.afk_channel else None
-            guild_data.default_role = guild.default_role.id
-
-        return guild_data
-
-    @staticmethod
-    def delete(session: Session, guild: discord.Guild):
-        guild_data = Guild.get(session, guild)
-        if not guild_data:
-            raise ValueError("Такого сервера нет в базе")
-        session.delete(guild_data)
-        return guild_data

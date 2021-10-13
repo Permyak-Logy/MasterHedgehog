@@ -4,8 +4,15 @@ import logging
 import re
 from typing import Union, Optional, Type, Iterable, Callable
 
+from discord import Status
+
 logging = logging.getLogger(__name__)
 
+ONLINE = 1
+OFFLINE = 2
+IDLE = 3
+DND = 4
+INVISIBLE = 5
 T = Type['T']
 
 
@@ -98,6 +105,12 @@ class HRF:
         if not number % 1:
             number = int(number)
         return str(number)
+
+
+class DBTools:
+    # TODO: Убрать!!!
+    # Некоторые манипуляции с бд о участниках серверов
+    pass
 
 
 def full_using_db(*, default_return=None, is_async=False):
@@ -216,6 +229,20 @@ def get_time_from_string(string: str) -> datetime.timedelta:
                               hours=float(hours[0][:-1]),
                               minutes=float(minutes[0][:-1]),
                               seconds=float(seconds[0][:-1]))
+
+
+def cast_status_to_int(status) -> int:
+    if status == Status.online:
+        return ONLINE
+    if status == Status.offline:
+        return OFFLINE
+    if status == Status.idle:
+        return IDLE
+    if status == Status.dnd:
+        return DND
+    if status == Status.invisible:
+        return INVISIBLE
+    return -1
 
 
 def get_any(__iterable: Iterable[T], key: Callable = bool) -> Optional[T]:

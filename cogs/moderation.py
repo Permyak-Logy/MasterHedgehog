@@ -152,6 +152,7 @@ class ModerationCog(Cog, name="Модерация"):
         )
         await ctx.send(embed=embed)
 
+    # TODO: Возможность послать ^C для остановки
     @commands.command(name='очистить', aliases=['clear', 'purge', 'prg', 'cls'])
     @commands.cooldown(3, 1)
     @commands.guild_only()
@@ -161,10 +162,10 @@ class ModerationCog(Cog, name="Модерация"):
         """
         Чистит канал с лимитом очистки сообщений и проверяющей функцией check
         Если limit == -1 то очистка будет всего канала
-        Если check указан то вставляется в качестве проверки как " eval(f"lambda msg: {check}") "
         """
         async with ctx.typing():
-            check = eval(f'lambda msg: {" ".join(check)}') if check else None
+            if self.bot.is_owner(ctx.author):
+                check = eval(f'lambda msg: {" ".join(check)}') if check else None
 
             await ctx.message.delete()
 

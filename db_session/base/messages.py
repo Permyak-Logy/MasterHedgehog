@@ -1,18 +1,18 @@
-from typing import Iterable
-
 import discord
-
-from db_session import SqlAlchemyBase, Session, ExtraTools
 import sqlalchemy
 
+import db_session
+from db_session import SqlAlchemyBase
 
-class Message(SqlAlchemyBase, ExtraTools):
+
+class Message(SqlAlchemyBase):
     __tablename__ = "messages"
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
 
-    author = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'), nullable=False)
-    channel = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('channels.id'))
+    guild = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('guilds.id'))
+    author = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('members.id'), nullable=False)
+    channel = sqlalchemy.Column(sqlalchemy.Integer)
 
     content = sqlalchemy.Column(sqlalchemy.String, nullable=False)
 
@@ -20,10 +20,59 @@ class Message(SqlAlchemyBase, ExtraTools):
     has_mentions_roles = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False, default=False)
     has_mentions_everyone = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False, default=False)
 
-    created_at = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)
+    timestamp = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
 
     @staticmethod
-    def update_all(session: Session, messages: Iterable[discord.Message]):
+    def get(session: db_session.Session, message: discord.Message):
+        return session.query(Message).filter(Message.id == message.id).first()
+
+    @staticmethod
+    def insert(session: db_session.Session, message: discord.Message):
+        if Message.get(session, message):
+            raise ValueError("Такое сообщение уже есть")
+        msg = Message()
+        msg.id = message.id
+        if message.guild:
+            msg.guild = message.guild.id
+        msg.author = message.author.id
+        msg.channel = message.channel.id
+        msg.content = message.content
+        msg.has_mentions = bool(message.mentions)
+        msg.has_mentions_roles = bool(message.role_mentions)
+        msg.has_mentions_everyone = bool(message.mention_everyone)
+        msg.timestamp = message.created_at.timestamp()
+
+        session.add(msg)
+        return msg
+
+    @staticmethod
+    def update(session: db_session.Session, message: discord.Message):
+        msg = Message.get(session, message)
+        if not msg:
+            msg = Message.insert(session, message)
+        else:
+            msg.id = message.id
+            if message.guild:
+                msg.guild = message.guild.id
+            msg.author = message.author.id
+            msg.channel = message.channel.id
+            msg.content = message.content
+            msg.has_mentions = bool(message.mentions)
+            msg.has_mentions_roles = bool(message.role_mentions)
+            msg.has_mentions_everyone = bool(message.mention_everyone)
+            msg.timestamp = message.created_at.timestamp()
+        return msg
+
+    @staticmethod
+    def delete(session: db_session.Session, message: discord.Message):
+        m = Message.get(session, message)
+        if not m:
+            raise ValueError("Такого сообщения нет в базе")
+        session.delete(m)
+        return m
+
+    @staticmethod
+    def update_all(session: db_session.Session, messages: Iterable[discord.Message]):
         ids = set(message.id for message in messages)
         for msg_data in Message.get_all(session):
             if msg_data.id not in ids:
@@ -32,51 +81,3 @@ class Message(SqlAlchemyBase, ExtraTools):
 
         for msg in messages:
             Message.update(session, msg)
-
-    @staticmethod
-    def get(session: Session, msg: discord.Message):
-        return session.query(Message).filter(msg.id == msg.id).first()
-
-    @staticmethod
-    def add(session: Session, message: discord.Message):
-        if Message.get(session, message):
-            raise ValueError("Такое сообщение уже есть")
-        msg_data = Message()
-        msg_data.id = message.id
-        if message.guild:
-            msg_data.guild = message.guild.id
-        msg_data.author = message.author.id
-        msg_data.channel = message.channel.id
-        msg_data.content = message.content
-        msg_data.has_mentions = bool(message.mentions)
-        msg_data.has_mentions_roles = bool(message.role_mentions)
-        msg_data.has_mentions_everyone = bool(message.mention_everyone)
-        msg_data.timestamp = message.created_at.timestamp()
-        session.add(msg_data)
-        return msg_data
-
-    @staticmethod
-    def update(session: Session, message: discord.Message):
-        msg_data = Message.get(session, message)
-        if not msg_data:
-            msg_data = Message.add(session, message)
-        else:
-            msg_data.id = message.id
-            if message.guild:
-                msg_data.guild = message.guild.id
-            msg_data.author = message.author.id
-            msg_data.channel = message.channel.id
-            msg_data.content = message.content
-            msg_data.has_mentions = bool(message.mentions)
-            msg_data.has_mentions_roles = bool(message.role_mentions)
-            msg_data.has_mentions_everyone = bool(message.mention_everyone)
-            msg_data.timestamp = message.created_at.timestamp()
-        return msg_data
-
-    @staticmethod
-    def delete(session: Session, message: discord.Message):
-        msg_data = Message.get(session, message)
-        if not msg_data:
-            raise ValueError("Такого сообщения нет в базе")
-        session.delete(msg_data)
-        return msg_data

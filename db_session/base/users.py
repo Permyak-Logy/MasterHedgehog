@@ -1,20 +1,20 @@
 import datetime
-from typing import Iterable, Union
+from typing import Iterable
+from typing import Union
 
 import discord
 import sqlalchemy
 from sqlalchemy import orm
 
-from db_session import SqlAlchemyBase, Session, ExtraTools
+import db_session
+from db_session import SqlAlchemyBase
 
 
-class User(SqlAlchemyBase, ExtraTools):
+class User(SqlAlchemyBase):
     __tablename__ = 'users'
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, nullable=False)
-    name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
-    discriminator = sqlalchemy.Column(sqlalchemy.String, nullable=False)
-
+    nick = sqlalchemy.Column(sqlalchemy.String, nullable=False)
     bot = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False)
     created_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.datetime.now)
     member = orm.relation('Member', back_populates='user')
@@ -26,7 +26,43 @@ class User(SqlAlchemyBase, ExtraTools):
         return repr(self)
 
     @staticmethod
-    def update_all(session: Session, users: Iterable[discord.User]):
+    def get(session: db_session.Session, user: Union[discord.User, discord.Member]):
+        return session.query(User).filter(User.id == user.id).first()
+
+    @staticmethod
+    def insert(session: db_session.Session, user: Union[discord.User, discord.Member]):
+        if User.get(session, user):
+            raise ValueError("Участник уже в базе")
+        u = User()
+        u.id = user.id
+        u.nick = str(user)
+        u.bot = user.bot
+        u.created_at = user.created_at
+        session.add(u)
+        return u
+
+    @staticmethod
+    def update(session: db_session.Session, user: Union[discord.User, discord.Member]):
+        u = User.get(session, user)
+        if not u:
+            u = User.insert(session, user)
+        else:
+            u.id = user.id
+            u.nick = str(user)
+            u.bot = user.bot
+            u.created_at = user.created_at
+        return u
+
+    @staticmethod
+    def delete(session: db_session.Session, user: Union[discord.User, discord.Member]):
+        u = User.get(session, user)
+        if not u:
+            raise ValueError("Такого участника нет в базе")
+        session.delete(u)
+        return u
+
+    @staticmethod
+    def update_all(session: db_session.Session, users: Iterable[discord.User]):
         ids = set(user.id for user in users)
         for user_data in User.get_all(session):
             if user_data.id not in ids:
@@ -34,41 +70,3 @@ class User(SqlAlchemyBase, ExtraTools):
 
         for user in users:
             User.update(session, user)
-
-    @staticmethod
-    def get(session: Session, user: Union[discord.User, discord.Member]):
-        return session.query(User).filter(User.id == user.id).first()
-
-    @staticmethod
-    def add(session: Session, user: Union[discord.User, discord.Member]):
-        if User.get(session, user):
-            raise ValueError("Участник уже в базе")
-        user_data = User()
-        user_data.id = user.id
-        user_data.name = user.name
-        user_data.discriminator = user.discriminator
-        user_data.bot = user.bot
-        user_data.created_at = user.created_at
-        session.add(user_data)
-        return user_data
-
-    @staticmethod
-    def update(session: Session, user: Union[discord.User, discord.Member]):
-        user_data = User.get(session, user)
-        if not user_data:
-            user_data = User.add(session, user)
-        else:
-            user_data.id = user.id
-            user_data.name = user.name
-            user_data.discriminator = user.discriminator
-            user_data.bot = user.bot
-            user_data.created_at = user.created_at
-        return user_data
-
-    @staticmethod
-    def delete(session: Session, user: Union[discord.User, discord.Member]):
-        user_data = User.get(session, user)
-        if not user_data:
-            raise ValueError("Такого участника нет в базе")
-        session.delete(user_data)
-        return user_data

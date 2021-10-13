@@ -9,10 +9,13 @@ from discord.utils import get
 
 import db_session
 from db_session import Session, BaseConfigMix
-from db_session.base import User, Member, Guild, Channel, Role, Message
+from db_session.base import User, Member, Guild, Message
 from .enums import TypeBot
 from .extra import HRF, full_using_db, run_if_ready_db
 from .help import HelpCommand
+
+# TODO: Загрузка внешней базы данных
+# TODO: Роли участников в отдельной таблице
 
 logging = logging.getLogger(__name__)
 
@@ -116,6 +119,7 @@ class Bot(commands.Bot):
     @full_using_db(is_async=True)
     async def on_guild_update(self, _, guild: discord.Guild):
         with db_session.create_session() as session:
+            session: Session
             Guild.update(session, guild)
             session.commit()
 
@@ -349,12 +353,11 @@ class Bot(commands.Bot):
         Guild.update_all(session, self.guilds)
         User.update_all(session, self.users)
         Member.update_all(session, self.get_all_members())
-        Channel.update_all(session, self.get_all_channels())
 
         roles = []
         for guild in self.guilds:
             roles += guild.roles
-        Role.update_all(session, roles)
+        # Role.update_all(session, roles)  # TODO: Вообновить обновление ролей
         logging.info('Update all data is completed')
 
     # noinspection PyMethodMayBeStatic
