@@ -7,7 +7,7 @@ import pyttsx3
 from discord.ext import commands
 
 import db_session
-from PLyBot import Bot, Cog, DBTools, Context
+from PLyBot import Bot, Cog, Context
 from PLyBot.const import TEXT_EMOJI_NUMBERS
 from db_session.base import Message
 
@@ -40,7 +40,7 @@ class FunCog(Cog, name="Веселье"):
                     try:
                         async for message in channel.history():
                             count += 1
-                            DBTools.update_msg(session, message)
+                            Message.update(session, message)
                     except Exception:
                         pass
                 session.commit()

@@ -9,7 +9,7 @@ from discord.utils import get
 
 import db_session
 from db_session import Session, BaseConfigMix
-from db_session.base import User, Member, Guild
+from db_session.base import User, Member, Guild, Message
 from .enums import TypeBot
 from .extra import HRF, DBTools, full_db_using
 from .help import HelpCommand
@@ -92,12 +92,12 @@ class Bot(commands.Bot):
         if self.using_db:
             with db_session.create_session() as session:
                 session: Session
-                DBTools.update_msg(session, message)
-                DBTools.update_user(session, message.author)
+                Message.update(session, message)
+                User.update(session, message.author)
 
                 if isinstance(message.author, discord.Member):
-                    DBTools.update_member(session, message.author)
-                    DBTools.get_member_data(session, message.author).last_activity = message.created_at
+                    Member.update(session, message.author)
+                    Member.get(session, message.author).last_activity = message.created_at
 
                 session.commit()
 
@@ -109,7 +109,7 @@ class Bot(commands.Bot):
 
         logging.info(f"{self.user} joined on {guild}")
         with db_session.create_session() as session:
-            DBTools.update_guild(session, guild)
+            Guild.update(session, guild)
             session.commit()
             session.close()
 
@@ -119,7 +119,7 @@ class Bot(commands.Bot):
 
         with db_session.create_session() as session:
             session: Session
-            DBTools.update_guild(session, guild)
+            Guild.update(session, guild)
             session.commit()
 
     @full_db_using(is_async=True)
@@ -128,7 +128,7 @@ class Bot(commands.Bot):
 
         with db_session.create_session() as session:
             session: Session
-            DBTools.update_user(session, user)
+            User.update(session, user)
             session.commit()
 
     @full_db_using(is_async=True)
@@ -137,7 +137,7 @@ class Bot(commands.Bot):
 
         with db_session.create_session() as session:
             session: Session
-            DBTools.update_member(session, member)
+            Member.update(session, member)
             # TODO: database is locked сделать async commit
             session.commit()
 
@@ -147,14 +147,14 @@ class Bot(commands.Bot):
         # TODO: Выдача ролей при перезаходе. Убрать костыль
         with db_session.create_session() as session:
             session: Session
-            DBTools.update_user(session, member)
+            User.update(session, member)
 
             try:
                 cog: Cog = self.get_cog('Роли')
                 config = cog.get_config(session, member.guild)
                 if config.check_active_until():
 
-                    data = DBTools.get_member_data(session, member)
+                    data = Member.get(session, member)
 
                     # noinspection PyUnresolvedReferences
                     if config.return_old_roles:
@@ -167,7 +167,7 @@ class Bot(commands.Bot):
             except AttributeError:
                 pass
 
-            DBTools.update_member(session, self.get_guild(member.guild.id).get_member(member.id))
+            Member.update(session, self.get_guild(member.guild.id).get_member(member.id))
             session.commit()
 
     @full_db_using(is_async=True)
@@ -187,7 +187,7 @@ class Bot(commands.Bot):
                 if not config.check_active_until():
                     raise BreakError()
 
-                data = DBTools.get_member_data(session, member)
+                data = Member.get(session, member)
                 # noinspection PyUnresolvedReferences
                 if not config.return_old_roles:
                     raise BreakError()
@@ -197,7 +197,7 @@ class Bot(commands.Bot):
                 data.joined = False
 
             except (AttributeError, BreakError):
-                DBTools.delete_member(session, member)
+                Member.delete(session, member)
 
             session.commit()
 
@@ -350,12 +350,12 @@ class Bot(commands.Bot):
     # Глобальное взаимодействие с данными
     def update_all_data(self, session: db_session.Session):
         for guild in self.guilds:
-            DBTools.update_guild(session, guild)
+            Guild.update(session, guild)
 
         for member in self.get_all_members():
             member: discord.Member
-            DBTools.update_user(session, member)
-            DBTools.update_member(session, member)
+            User.update(session, member)
+            Member.update(session, member)
 
         session.commit()
 
@@ -411,7 +411,7 @@ class Cog(commands.Cog, name="Без названия"):
             session: db_session.Session
 
             async def check_guild(guild_: discord.Guild) -> bool:
-                if DBTools.get_guild_data(session, guild_).ban_activity:
+                if Guild.get(session, guild_).ban_activity:
                     return False
                 if self.cls_config is not None:
                     config = self.update_config(session, guild_)
@@ -472,7 +472,7 @@ class Cog(commands.Cog, name="Без названия"):
         if config is None:
             config = self.cls_config()
             config.guild_id = guild.id
-            session.add(config)
+            session.insert(config)
 
         # Установка базовых прав доступа по возможности и очистка неиспользуемых прав
         try:

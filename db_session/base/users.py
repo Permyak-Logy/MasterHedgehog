@@ -1,7 +1,12 @@
 import datetime
+from typing import Union
+
+import discord
 import sqlalchemy
-from db_session import SqlAlchemyBase
 from sqlalchemy import orm
+
+import db_session
+from db_session import SqlAlchemyBase
 
 
 class User(SqlAlchemyBase):
@@ -18,3 +23,39 @@ class User(SqlAlchemyBase):
 
     def __str__(self):
         return repr(self)
+
+    @staticmethod
+    def get(session: db_session.Session, user: Union[discord.User, discord.Member]):
+        return session.query(User).filter(User.id == user.id).first()
+
+    @staticmethod
+    def insert(session: db_session.Session, user: Union[discord.User, discord.Member]):
+        if User.get(session, user):
+            raise ValueError("Участник уже в базе")
+        u = User()
+        u.id = user.id
+        u.nick = str(user)
+        u.bot = user.bot
+        u.created_at = user.created_at
+        session.add(u)
+        return u
+
+    @staticmethod
+    def update(session: db_session.Session, user: Union[discord.User, discord.Member]):
+        u = User.get(session, user)
+        if not u:
+            u = User.insert(session, user)
+        else:
+            u.id = user.id
+            u.nick = str(user)
+            u.bot = user.bot
+            u.created_at = user.created_at
+        return u
+
+    @staticmethod
+    def delete(session: db_session.Session, user: Union[discord.User, discord.Member]):
+        u = User.get(session, user)
+        if not u:
+            raise ValueError("Такого участника нет в базе")
+        session.delete(u)
+        return u

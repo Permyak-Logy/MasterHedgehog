@@ -7,6 +7,8 @@ from sqlalchemy import orm
 
 from db_session import SqlAlchemyBase
 from db_session.const import MIN_DATETIME
+from PLyBot.extra import cast_status_to_int
+import db_session
 
 
 class Member(SqlAlchemyBase):
@@ -55,3 +57,47 @@ class Member(SqlAlchemyBase):
             self.roles = ";".join(map(str, map(lambda r: r.id, roles)))
         else:
             self.roles = None
+
+    @staticmethod
+    def get(session: db_session.Session, member: discord.Member):
+        return session.query(Member).filter(Member.id == member.id, Member.guild_id == member.guild.id).first()
+
+    @staticmethod
+    def insert(session: db_session.Session, member: discord.Member):
+        if Member.get(session, member):
+            raise ValueError("Участник уже есть в базе")
+        m = Member()
+        m.id = member.id
+        m.guild_id = member.guild.id
+        m.display_name = member.display_name
+        m.joined_at = member.joined_at
+        m.set_roles(member.roles)
+        m.status = cast_status_to_int(member.status)
+        m.joined = True
+        session.add(m)
+        return m
+
+    @staticmethod
+    def update(session: db_session.Session, member: discord.Member):
+        m = Member.get(session, member)
+        if not m:
+            m = Member.insert(session, member)
+        else:
+            m.name = str(member)
+            m.bot = member.bot
+            m.guild_name = member.guild.name
+            m.display_name = member.display_name
+            m.created_at = member.created_at
+            m.joined_at = member.joined_at
+            m.status = cast_status_to_int(member.status)
+            m.set_roles(member.roles)
+            m.joined = True
+        return m
+
+    @staticmethod
+    def delete(session: db_session.Session, member: discord.Member):
+        m = Member.get(session, member)
+        if not m:
+            raise ValueError("Такого участника нет в базе")
+        session.delete(m)
+        return m

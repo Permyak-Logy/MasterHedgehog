@@ -1,6 +1,8 @@
 from db_session import SqlAlchemyBase
 import sqlalchemy
 from sqlalchemy import orm
+import db_session
+import discord
 
 
 class Guild(SqlAlchemyBase):
@@ -18,3 +20,37 @@ class Guild(SqlAlchemyBase):
 
     def __str__(self):
         return repr(self)
+
+    @staticmethod
+    def get(session: db_session.Session, guild: discord.Guild):
+        return session.query(Guild).filter(Guild.id == guild.id).first()
+
+    @staticmethod
+    def insert(session: db_session.Session, guild: discord.Guild):
+        if Guild.get(session, guild):
+            raise ValueError("Такой сервер уже есть")
+        g = Guild()
+        g.id = guild.id
+        g.owner = guild.owner_id
+        g.name = guild.name
+        session.add(g)
+        return g
+
+    @staticmethod
+    def update(session: db_session.Session, guild: discord.Guild):
+        g = Guild.get(session, guild)
+        if not g:
+            g = Guild.insert(session, guild)
+        else:
+            g.id = guild.id
+            g.name = guild.name
+            g.owner = guild.owner_id
+        return g
+
+    @staticmethod
+    def delete(session: db_session.Session, guild: discord.Guild):
+        g = Guild.get(session, guild)
+        if not g:
+            raise ValueError("Такого сервера нет в базе")
+        session.delete(g)
+        return g
