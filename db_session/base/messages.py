@@ -1,6 +1,6 @@
 import discord
 import sqlalchemy
-
+from typing import Iterable
 import db_session
 from db_session import SqlAlchemyBase
 

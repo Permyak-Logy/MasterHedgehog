@@ -60,8 +60,9 @@ class Guild(SqlAlchemyBase):
 
     @staticmethod
     def update_all(session: db_session.Session, guilds: Iterable[discord.Guild]):
+        # Что то с базой данных тут не так
         for guild_data in Guild.get_all(session):
             session.delete(guild_data)
 
         for guild in guilds:
-            Guild.add(session, guild)
+            Guild.insert(session, guild)
