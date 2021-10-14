@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 import discord
 import sqlalchemy
@@ -77,13 +77,26 @@ class RoleForReaction(SqlAlchemyBase):
         self.roles = ",".join(filter(bool, [str(role.id) for role in roles])) or None
 
 
-class RolesMembers:  # (SqlAlchemyBase):
+class RolesMember:  # (SqlAlchemyBase):
     __tablename__ = "roles_members"
     config_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('role'))
 
     member_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('role'))
 
-    roles_id = sqlalchemy.Column(sqlalchemy.String)
+    roles_ids = sqlalchemy.Column(sqlalchemy.String)
+
+    def get_roles(self, bot: discord.Client) -> List[discord.Role]:
+        guild: discord.Guild = bot.get_guild(self.config_id)
+        if guild is None:
+            return []
+        roles = self.roles_ids
+        return list(filter(bool, map(guild.get_role, map(int, (roles or "").split(";")))))
+
+    def set_roles(self, roles: list):
+        if roles:
+            self.roles_ids = ";".join(map(str, map(lambda r: r.id, roles)))
+        else:
+            self.roles_ids = None
 
 
 class RolesCog(Cog, name='Роли'):
@@ -101,83 +114,83 @@ class RolesCog(Cog, name='Роли'):
         return super().get_config(session, guild)
 
     @commands.Cog.listener('on_ready')
+    async def update_member_roles(self):
+        with db_session.create_session() as session:
+            pass
+
+    @commands.Cog.listener('on_ready')
     async def clear_unavailable_rfr(self):
-        session = db_session.create_session()
-        all_rfr = session.query(RoleForReaction).all()
-        for rfr in all_rfr:
-            channel = self.bot.get_channel(rfr.channel_id)
-            try:
-                await channel.fetch_message(rfr.message_id)
-            except (AttributeError, NotFound):
-                session.delete(rfr)
-        session.commit()
-        session.close()
+        with db_session.create_session() as session:
+            all_rfr = session.query(RoleForReaction).all()
+            for rfr in all_rfr:
+                channel = self.bot.get_channel(rfr.channel_id)
+                try:
+                    await channel.fetch_message(rfr.message_id)
+                except (AttributeError, NotFound):
+                    session.delete(rfr)
+            session.commit()
 
-    @commands.Cog.listener()
+    @commands.Cog.listener('on_raw_bulk_message_delete')
     async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent):
-        session = db_session.create_session()
-        all_rfr = session.query(RoleForReaction).filter(RoleForReaction.message_id.in_(payload.message_ids)).all()
-        for rfr in all_rfr:
-            session.delete(rfr)
-        session.commit()
-        session.close()
+        with db_session.create_session() as session:
+            all_rfr = session.query(RoleForReaction).filter(RoleForReaction.message_id.in_(payload.message_ids)).all()
+            for rfr in all_rfr:
+                session.delete(rfr)
+            session.commit()
 
-    @commands.Cog.listener()
+    @commands.Cog.listener('on_raw_message_delete')
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
-        session = db_session.create_session()
-        rfr = session.query(RoleForReaction).filter(RoleForReaction.message_id == payload.message_id).first()
-        if rfr:
-            session.delete(rfr)
-        session.commit()
-        session.close()
+        with db_session.create_session() as session:
+            rfr = session.query(RoleForReaction).filter(RoleForReaction.message_id == payload.message_id).first()
+            if rfr:
+                session.delete(rfr)
+            session.commit()
 
-    @commands.Cog.listener()
+    @commands.Cog.listener('on_raw_reaction_add')
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             return
 
-        session = db_session.create_session()
-        config = self.get_config(session, guild)
-        if not config:
-            session.close()
-            return
-        for i, reaction in EMOJI_NUMBERS.items():
-            if payload.emoji.name == reaction:
-                rfr: RoleForReaction = session.query(RoleForReaction).filter(
-                    RoleForReaction.message_id == payload.message_id).first()
-                if rfr:
-                    roles = rfr.get_roles(self.bot)
-                    try:
-                        member = guild.get_member(payload.user_id)
-                        await member.add_roles(roles[i - 1])
-                    except (IndexError, Forbidden, AttributeError):
-                        pass
-                break
+        with db_session.create_session() as session:
+            config = self.get_config(session, guild)
+            if not config:
+                return
+            for i, reaction in EMOJI_NUMBERS.items():
+                if payload.emoji.name == reaction:
+                    rfr: RoleForReaction = session.query(RoleForReaction).filter(
+                        RoleForReaction.message_id == payload.message_id).first()
+                    if rfr:
+                        roles = rfr.get_roles(self.bot)
+                        try:
+                            member = guild.get_member(payload.user_id)
+                            await member.add_roles(roles[i - 1])
+                        except (IndexError, Forbidden, AttributeError):
+                            pass
+                    break
 
-    @commands.Cog.listener()
+    @commands.Cog.listener('on_raw_reaction_remove')
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             return
 
-        session = db_session.create_session()
-        config = self.get_config(session, guild)
-        if not config:
-            session.close()
-            return
-        for i, reaction in EMOJI_NUMBERS.items():
-            if payload.emoji.name == reaction:
-                rfr: RoleForReaction = session.query(RoleForReaction).filter(
-                    RoleForReaction.message_id == payload.message_id).first()
-                if rfr:
-                    roles = rfr.get_roles(self.bot)
-                    try:
-                        member = guild.get_member(payload.user_id)
-                        await member.remove_roles(roles[i - 1])
-                    except (IndexError, Forbidden, AttributeError):
-                        pass
-                break
+        with db_session.create_session() as session:
+            config = self.get_config(session, guild)
+            if not config:
+                return
+            for i, reaction in EMOJI_NUMBERS.items():
+                if payload.emoji.name == reaction:
+                    rfr: RoleForReaction = session.query(RoleForReaction).filter(
+                        RoleForReaction.message_id == payload.message_id).first()
+                    if rfr:
+                        roles = rfr.get_roles(self.bot)
+                        try:
+                            member = guild.get_member(payload.user_id)
+                            await member.remove_roles(roles[i - 1])
+                        except (IndexError, Forbidden, AttributeError):
+                            pass
+                    break
 
     @commands.command(name='автороли', aliases=['autoroles'])
     @commands.guild_only()

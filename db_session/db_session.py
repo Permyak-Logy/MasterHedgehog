@@ -60,6 +60,6 @@ def bigint(value: int) -> int:
     return max(MIN_BIGINT, min(value, MAX_BIGINT))
 
 
-def create_session() -> Session:
+def create_session(**kwargs) -> Session:
     global __factory
-    return __factory()
+    return __factory(**kwargs)

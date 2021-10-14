@@ -63,10 +63,5 @@ class User(SqlAlchemyBase):
 
     @staticmethod
     def update_all(session: db_session.Session, users: Iterable[discord.User]):
-        ids = set(user.id for user in users)
-        for user_data in User.get_all(session):
-            if user_data.id not in ids:
-                session.delete(user_data)
-
         for user in users:
             User.update(session, user)

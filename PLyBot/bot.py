@@ -59,8 +59,9 @@ class Bot(commands.Bot):
 
     @property
     async def invite_link(self):
-        assert self.user.bot, "Это не доступно для обычного пользователя"
+        """Возвращает ссылку приглашение для бота. Работает только если авторизован бот, а не обычный пользователь."""
 
+        assert self.user.bot, "Это не доступно для обычного пользователя"
         if self.__invite_link:
             return self.__invite_link
         info = await self.application_info()
@@ -84,7 +85,7 @@ class Bot(commands.Bot):
         logging.info(f"Бот класса {self.__class__.__name__} готов к работе как \"{self.user}\"")
 
     async def on_resumed(self):
-        pass
+        logging.info(f"[resumed] Бот {self.user} возобновил сеанс")
 
     async def on_connect(self):
         logging.info(f"[connect] Бот {self.user} подключился к discord")
@@ -118,6 +119,7 @@ class Bot(commands.Bot):
     @run_if_ready_db(is_async=True)
     @full_using_db(is_async=True)
     async def on_guild_update(self, _, guild: discord.Guild):
+        logging.debug(f"{guild} updated")
         with db_session.create_session() as session:
             session: Session
             Guild.update(session, guild)
@@ -126,6 +128,7 @@ class Bot(commands.Bot):
     @run_if_ready_db(is_async=True)
     @full_using_db(is_async=True)
     async def on_user_update(self, _, user: discord.User):
+        logging.debug(f"{user} updated")
         with db_session.create_session() as session:
             session: Session
             User.update(session, user)
@@ -134,6 +137,7 @@ class Bot(commands.Bot):
     @run_if_ready_db(is_async=True)
     @full_using_db(is_async=True)
     async def on_member_update(self, _, member: discord.Member):
+        logging.debug(f"{member} updated")
         with db_session.create_session() as session:
             session: Session
             Member.update(session, member)
@@ -515,12 +519,12 @@ class Context(commands.Context):
     def __str__(self):
         return "{}(cmd={}{} cog={} msg={}  author={} guild={})".format(
             self.__class__.__name__, self.prefix, self.command or self.invoked_with,
-            self.__opt(self.cog, 'qualified_name'), self.__opt(self.message, 'id'),
-            self.__opt(self.author, 'id'), self.__opt(self.guild, 'id'))
+            self.getattr(self.cog, 'qualified_name'), self.getattr(self.message, 'id'),
+            self.getattr(self.author, 'id'), self.getattr(self.guild, 'id'))
 
     def __repr__(self):
         return self.__class__.__name__ + f"(cmd={self.prefix}{self.command or self.invoked_with} " \
-                                         f"cog={self.__opt(self.cog, 'qualified_name')})"
+                                         f"cog={self.getattr(self.cog, 'qualified_name')})"
 
     @property
     def cog(self) -> Optional[commands.Cog]:
@@ -547,7 +551,7 @@ class Context(commands.Context):
         return super(Context, self).voice_client
 
     @staticmethod
-    def __opt(a, attr=None, default=None):
+    def getattr(a, attr=None, default=None):
         return (getattr(a, attr) if attr else a) if a else default
 
 

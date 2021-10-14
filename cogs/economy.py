@@ -128,7 +128,7 @@ class EconomyCog(Cog, name='Экономика'):
     def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[EconomyConfig]:
         return super().get_config(session, guild)
 
-    @commands.Cog.listener()
+    @commands.Cog.listener('on_ready')
     async def on_ready(self):
         with db_session.create_session() as session:
             for member in self.bot.get_all_members():
@@ -138,13 +138,13 @@ class EconomyCog(Cog, name='Экономика'):
                 DBEconomyTools.update_balance_member(session, member)
             session.commit()
 
-    @commands.Cog.listener()
+    @commands.Cog.listener('on_member_join')
     async def on_member_join(self, member: discord.Member):
         with db_session.create_session() as session:
             DBEconomyTools.update_balance_member(session, member)
             session.commit()
 
-    @commands.Cog.listener()
+    @commands.Cog.listener('on_member_remove')
     async def on_member_remove(self, member: discord.Member):
         with db_session.create_session() as session:
             if DBEconomyTools.get_balance_member(session, member):

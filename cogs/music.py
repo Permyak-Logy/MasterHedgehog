@@ -50,7 +50,7 @@ class MusicCog(Cog, name='Музыка'):
         super(MusicCog, self).__init__(bot)
         self.turn_music = {}
 
-    @commands.Cog.listener()
+    @commands.Cog.listener('on_message')
     async def on_message(self, message: discord.Message):
         if not self.bot.is_ready():
             return

@@ -100,7 +100,7 @@ class Member(SqlAlchemyBase):
     def update_all(session: db_session.Session, members: Iterable[discord.Member]):
         ids = set((member.id, member.guild.id) for member in members)
         for member_data in Member.get_all(session):
-            if (member_data.user_id, member_data.guild_id) not in ids:
+            if (member_data.id, member_data.guild_id) not in ids:
                 session.delete(member_data)
 
         for member in members:

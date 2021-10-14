@@ -14,7 +14,7 @@ from db_session.base import Message
 try:
     swift = __import__('other', fromlist=['swift'])
 except ImportError:
-    swift = object
+    swift = object()
     setattr(swift, 'words', [])
 
 logging = logging.getLogger(__name__)
