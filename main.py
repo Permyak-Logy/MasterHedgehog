@@ -1,6 +1,7 @@
 import json
-import os
 import logging
+import os
+
 import discord
 
 from PLyBot import Bot, not_in
@@ -40,6 +41,7 @@ def main():
     cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names))
 
     cogs.append('PLyBot.info')
+    cogs.append('PLyBot.api')
     bot.load_all_extensions(cogs)
 
     with open('token.txt', encoding='utf8') as token_file:

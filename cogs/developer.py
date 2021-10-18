@@ -1,77 +1,23 @@
+import argparse
 import asyncio
 import datetime
-import argparse
+
 import discord
 from discord.errors import Forbidden
 from discord.ext import commands
-from sqlalchemy import Column, Integer, ForeignKey, String, DateTime
 
 import db_session
-from PLyBot import Bot, Cog, join_string, Context
-from db_session import SqlAlchemyBase
+from PLyBot import Bot, Cog, ApiKey, join_string, Context
 from db_session.const import MIN_DATETIME
-import secrets
 
 activate_parser = argparse.ArgumentParser()
 activate_parser.add_argument('-A', action="store_true")
-
-
-class Permissions:
-    VIEW = 1
-    EDIT = 2
-
-    @staticmethod
-    def make(**flags) -> int:
-        flag = 0
-
-        flag |= Permissions.VIEW if flags.pop('view', 0) else 0
-        flag |= Permissions.EDIT if flags.pop('edit', 0) else 0
-
-        if flags:
-            raise TypeError(f'Передан неизвестный ключ {flags}')
-
-        return flag
-
-
-# TODO: Доделать
-class ApiKey(SqlAlchemyBase):  # TODO: Ассиметричное шифрование добавить
-    __tablename__ = 'api_keys'
-
-    key = Column(String, primary_key=True)
-    permission = Column(Integer, nullable=False, default=Permissions.make())
-    until_active = Column(DateTime)
-
-    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
-    created_at = Column(Integer, nullable=False, default=datetime.datetime.now)
-    created_for_guild = Column(Integer, ForeignKey('guilds.id'), nullable=False)
-
-    @staticmethod
-    def get(session: db_session.Session, key: str):
-        return session.query(ApiKey).filter(ApiKey.key == key).first()
-
-    def gen(self, ctx: Context, permission_flags=0, until_active: datetime.datetime = None):
-        self.key = secrets.token_hex(32)
-        self.permission = Permissions.make()
-        self.until_active = datetime.datetime.now()
-
-        self.created_by = ctx.author.id
-        self.created_for_guild = ctx.guild.id
-
-        self.until_active = until_active
-        self.permission = permission_flags
-
-    def __repr__(self):
-        return f"ApiKey"
-
-    def __str__(self):
-        return repr(self)
 
 
 # TODO: Русифицировать команды
 class DeveloperCog(Cog, name="Для разработчиков"):
     def __init__(self, bot: Bot):
         super().__init__(bot)
-        self.bot.add_models(ApiKey)
 
     @commands.command(name='activate', aliases=['act'])
     @commands.is_owner()

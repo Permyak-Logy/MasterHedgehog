@@ -164,7 +164,7 @@ class ModerationCog(Cog, name="Модерация"):
         Если limit == -1 то очистка будет всего канала
         """
         async with ctx.typing():
-            if self.bot.is_owner(ctx.author):
+            if await self.bot.is_owner(ctx.author):
                 check = eval(f'lambda msg: {" ".join(check)}') if check else None
 
             await ctx.message.delete()

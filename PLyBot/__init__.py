@@ -1,4 +1,5 @@
-from .bot import Bot, Cog, Context, ApiBP
+from .api import ApiCog, ApiKey, BaseApiBP
+from .bot import Bot, Cog, Context
 from .extra import Check, HRF, DBTools
 from .extra import ONLINE, OFFLINE, IDLE, DND, INVISIBLE, T
 from .extra import equal, not_equal, not_in, in_
@@ -11,4 +12,5 @@ from .info import InfoCog
 def main(*args, db_con: str = None, **kwargs):
     app = Bot(db_con=db_con)
     app.add_cog(InfoCog(app))
+    app.add_models(InfoCog(app))
     app.run(*args, **kwargs)

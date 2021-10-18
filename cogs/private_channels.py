@@ -5,11 +5,11 @@ import discord
 import sqlalchemy
 from discord.ext import commands
 from flask import Blueprint, jsonify, request
-
+from PLyBot.const import HeadersApi
 import db_session
 from PLyBot import Bot, get_any
 from PLyBot import Cog
-from PLyBot.bot import ApiBP
+from PLyBot import BaseApiBP
 from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
 
 
@@ -120,7 +120,7 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
                                 pass
 
 
-class PrivateChannelsBP(ApiBP):
+class PrivateChannelsBP(BaseApiBP):
     blueprint = Blueprint('private_channels_api', __name__)
 
     def __init__(self, cog):
@@ -130,13 +130,11 @@ class PrivateChannelsBP(ApiBP):
     @blueprint.route('/channels', methods=['GET', 'POST'])
     def get_channels_bp():
         with db_session.create_session() as session:
-            config_id = request.headers.get('config-id')
-            # api_key = request.headers['api-key']
-            if not config_id:
-                return jsonify(error="bad config-id")
+            guild_id = request.headers[HeadersApi.GUILD_ID]
+            api_key = request.headers['api-key']
 
-            config: PrivateChannelsConfig = session.query(PrivateChannelsConfig).filter(
-                PrivateChannelsConfig.guild_id == int(config_id)).first()
+            config = session.query(PrivateChannelsConfig).filter(
+                PrivateChannelsConfig.guild_id == int(guild_id)).first()
             if not config:
                 return jsonify(error="bad config-id")
             if request.method == 'GET':

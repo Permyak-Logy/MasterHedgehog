@@ -1,18 +1,63 @@
 import json
+import secrets
+from datetime import datetime
 
 import discord
 from discord.ext import commands
 from flask import Blueprint
+from flask import request, jsonify
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
 
 import db_session
-from PLyBot import Cog, Bot, ApiBP
+from PLyBot.bot import Cog, Bot
+from db_session import SqlAlchemyBase
 from db_session.const import DEFAULT_ACCESS
+from .const import HeadersApi
+from .extra import Permissions
+
+ATTRS_BOOL = {"admin", "everyone", "active"}
+ATTRS_INT = {"min_client_time", "min_member_time", "min_role"}
+ATTRS_LIST = {"roles", "users", "channels", "exc_roles", "exc_users", "exc_channels"}
 
 
-class PermissionsCog(Cog, name="Права доступа"):
-    def __init__(self, bot: Bot):
+class ApiKey(SqlAlchemyBase):  # TODO: Ассиметричное шифрование добавить
+    __tablename__ = 'api_keys'
+
+    key = Column(String, primary_key=True)
+    permission = Column(Integer, nullable=False, default=Permissions.make())
+    until_active = Column(DateTime)
+
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(Integer, nullable=False, default=datetime.now)
+    created_for_guild = Column(Integer, ForeignKey('guilds.id'), nullable=False)
+
+    @staticmethod
+    def get(session: db_session.Session, key: str):
+        return session.query(ApiKey).filter(ApiKey.key == key).first()
+
+    def gen(self, ctx, permission_flags=0, until_active: datetime = None):
+        self.key = secrets.token_hex(32)
+        self.permission = Permissions.make()
+        self.until_active = datetime.now()
+
+        self.created_by = ctx.author.id
+        self.created_for_guild = ctx.guild.id
+
+        self.until_active = until_active
+        self.permission = permission_flags
+
+    def __repr__(self):
+        return f"ApiKey"
+
+    def __str__(self):
+        return repr(self)
+
+
+class ApiCog(Cog, name="API Master Ёжа"):
+    def __init__(self, bot):
         super().__init__(bot)
-        self.bot.add_blueprint(PermissionsBP(self), url_prefix='/permissions')
+        self.bot.add_blueprint(PermissionsBP(self), url_prefix='/api')
+        self.bot.add_models(ApiKey)
 
     async def cog_check(self, ctx: commands.Context):
         # TODO: Исправить
@@ -83,11 +128,7 @@ class PermissionsCog(Cog, name="Права доступа"):
         assert check or command is None, "Команда не поддерживает настройку прав"
         assert check, "Модуль не поддерживает настройку прав"
 
-        attrs_bool = {"admin", "everyone", "active"}
-        attrs_int = {"min_client_time", "min_member_time", "min_role"}
-        attrs_list = {"roles", "users", "channels", "exc_roles", "exc_users", "exc_channels"}
-
-        assert attr in attrs_bool | attrs_int | attrs_list or attr is None, f"Недействительный параметр '{attr}'"
+        assert attr in ATTRS_BOOL | ATTRS_INT | ATTRS_LIST or attr is None, f"Недействительный параметр '{attr}'"
 
         session = db_session.create_session()
         config = cog.get_config(session, ctx.guild)
@@ -96,11 +137,11 @@ class PermissionsCog(Cog, name="Права доступа"):
         if attr is None:
             change_access.clear()
         elif args:
-            if attr in attrs_bool:
+            if attr in ATTRS_BOOL:
                 change_access[attr] = bool(args[0])
-            elif attr in attrs_int:
+            elif attr in ATTRS_INT:
                 change_access[attr] = int(args[0])
-            elif attr in attrs_list:
+            elif attr in ATTRS_LIST:
                 change_access[attr] = list(map(int, args))
         else:
             del change_access[attr]
@@ -175,9 +216,71 @@ class PermissionsCog(Cog, name="Права доступа"):
             await ctx.send("```python\nУ вас нет доступных модулей\n```")
 
 
-class PermissionsBP(ApiBP):
+class BaseApiBP:
+    blueprint: Blueprint
+
+    def __init__(self, cog: Cog):
+        self.cog = cog
+
+        self.blueprint.before_request(self.before_check_request)
+        self.blueprint.route('/')(self.index)
+        if cog.cls_config and hasattr(cog.cls_config, 'access'):
+            self.blueprint.route('/access', methods=['GET', 'POST'])(self.access)
+
+    def get_routes(self):
+        return _GetRuleFromSetupState()(self.blueprint)
+
+    def index(self):
+        return jsonify(sections=list(self.get_routes().keys() - {'/'}))
+
+    def access(self):
+        with db_session.create_session() as session:
+            if request.method == 'GET':
+                access = self.cog.get_config(session, request.headers[HeadersApi.GUILD_ID]).get_access()
+                print(json.dumps(access, indent=4, ensure_ascii=False))
+            return jsonify(status='ok')
+
+    def before_check_request(self):
+        bad_request = jsonify(status='400', msg='Bad request')
+
+        guild_id = request.headers.get(HeadersApi.GUILD_ID)
+        api_key = request.headers.get(HeadersApi.API_KEY)
+        if not guild_id or not api_key:
+            return bad_request
+        if self.cog.cls_config:
+            with db_session.create_session() as session:
+                if not self.cog.get_config(session, guild_id):
+                    return bad_request
+
+
+class PermissionsBP(BaseApiBP):
     blueprint = Blueprint('permissions_api', __name__)
 
 
+class _GetRuleFromSetupState:
+    """Этот класс служит чисто для выкачки из blueprint.deferred_functions routes и функции созданные
+    методом blueprint.route"""
+
+    def __init__(self, blueprint: Blueprint = None):
+        self.__blueprint = blueprint
+
+    def __call__(self, blueprint: Blueprint = None):
+        if not self.__blueprint and not blueprint:
+            return {}
+
+        result = {}
+        for func in (self.__blueprint or blueprint).deferred_functions:
+            try:
+                rule, endpoint, f, options = func(self)
+                result[rule] = (endpoint, f, options)
+            except AttributeError:
+                pass
+        return result
+
+    @staticmethod
+    def add_url_rule(rule, endpoint, f, **options):
+        return rule, endpoint, f, options
+
+
 def setup(bot: Bot):
-    bot.add_cog(PermissionsCog(bot))
+    bot.add_cog(ApiCog(bot))

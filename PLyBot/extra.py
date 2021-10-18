@@ -107,6 +107,23 @@ class HRF:
         return str(number)
 
 
+class Permissions:
+    VIEW = 1
+    EDIT = 2
+
+    @staticmethod
+    def make(**flags) -> int:
+        flag = 0
+
+        flag |= Permissions.VIEW if flags.pop('view', 0) else 0
+        flag |= Permissions.EDIT if flags.pop('edit', 0) else 0
+
+        if flags:
+            raise TypeError(f'Передан неизвестный ключ {flags}')
+
+        return flag
+
+
 class DBTools:
     # TODO: Убрать!!!
     # Некоторые манипуляции с бд о участниках серверов

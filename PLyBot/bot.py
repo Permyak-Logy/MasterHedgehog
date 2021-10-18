@@ -8,12 +8,11 @@ import discord
 from discord import VoiceClient
 from discord.ext import commands
 from discord.utils import get
-from flask import Flask, Blueprint, request, jsonify
+from flask import Flask, Blueprint
 
 import db_session
 from db_session import Session, BaseConfigMix
 from db_session.base import User, Member, Guild, Message
-from .const import HeadersApi
 from .enums import TypeBot
 from .extra import HRF, full_using_db, run_if_ready_db
 from .help import HelpCommand
@@ -22,29 +21,6 @@ from .help import HelpCommand
 # TODO: Роли участников в отдельной таблице
 
 logging = logging.getLogger(__name__)
-
-
-class ApiBP:
-    blueprint: Blueprint
-
-    def __init__(self, cog):
-        self.blueprint.before_app_request(self.before_check_request)
-        self.blueprint.route('/')(self.index)
-        self.cog: Cog = cog
-
-    def get_routes(self):
-        return _GetRuleFromSetupState()(self.blueprint)
-
-    def index(self):
-        return jsonify(self.get_routes().keys())
-
-    def before_check_request(self):
-        guild_id = request.headers.get(HeadersApi.GUILD_ID)
-        api_key = request.headers.get(HeadersApi.API_KEY)
-        if not guild_id or not api_key:
-            return jsonify(status='400', msg='Bad request')
-        with db_session.create_session() as session:
-            self.cog.get_config(session, guild_id)
 
 
 class Bot(commands.Bot):
@@ -79,7 +55,11 @@ class Bot(commands.Bot):
         self.after_invoke(self.on_after_invoke)
 
         self.__ready_db = False
-        self.flask_app = Flask(app_name) if turn_on_api_server else None
+        if turn_on_api_server:
+            self.flask_app = Flask(app_name)
+            self.flask_app.route('/')(self.index_api)
+        else:
+            self.flask_app = None
 
         logging.info(f'init bot {self.name} {self.version}')
 
@@ -338,7 +318,7 @@ class Bot(commands.Bot):
                 raise ValueError(f"Модель {model.__name__} уже зарегистрирована или передана дважды")
             self.__models[model.__name__] = model
 
-    def add_blueprint(self, blueprint: ApiBP, *args, url_prefix: str, **kwargs):
+    def add_blueprint(self, blueprint, *args, url_prefix: str, **kwargs):
         if url_prefix in self.__blueprints:
             raise ValueError(f"На prefix_url='{url_prefix}' уже зарегистрирован blueprint")
         self.__blueprints[url_prefix] = blueprint
@@ -404,6 +384,13 @@ class Bot(commands.Bot):
 
         logging.info('=' * 6 + 'Обновление бд выполнено' + '=' * 6)
 
+    # routes для Flask
+    def index_api(self):
+        response = {}
+        for url_rule, bp in self.__blueprints.items():
+            response[bp.cog.qualified_name] = url_rule
+        return response
+
     # TODO: Сделать получение уникального Prefix для каждого сервера
 
     def run(self, *args, **kwargs):
@@ -434,7 +421,7 @@ class Bot(commands.Bot):
         future = asyncio.ensure_future(runner_discord(), loop=loop)
         future.add_done_callback(stop_loop_on_completion)
 
-        if self.flask_app and self.__blueprints:
+        if self.using_db and self.flask_app and self.__blueprints:
             # Если есть хотя бы 1 указанный blueprint и вкл. flask,
             # то запускаем flask сервер
             future2 = asyncio.ensure_future(runner_flask(), loop=loop)
@@ -624,31 +611,6 @@ class Context(commands.Context):
     @staticmethod
     def getattr(a, attr=None, default=None):
         return (getattr(a, attr) if attr else a) if a else default
-
-
-class _GetRuleFromSetupState:
-    """Этот класс служит чисто для выкачки из blueprint.deferred_functions routes и функции созданные
-    методом blueprint.route"""
-
-    def __init__(self, blueprint: Blueprint = None):
-        self.__blueprint = blueprint
-
-    def __call__(self, blueprint: Blueprint = None):
-        if not self.__blueprint and not blueprint:
-            return {}
-
-        result = {}
-        for func in (self.__blueprint or blueprint).deferred_functions:
-            try:
-                rule, endpoint, f, options = func(self)
-                result[rule] = (endpoint, f, options)
-            except AttributeError:
-                pass
-        return result
-
-    @staticmethod
-    def add_url_rule(rule, endpoint, f, **options):
-        return rule, endpoint, f, options
 
 
 Cog.cog_check.__annotations__['ctx'] = Context
