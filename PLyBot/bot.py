@@ -1,15 +1,19 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta
+from threading import Thread
 from typing import Union, Optional, Type
 
 import discord
 from discord import VoiceClient
 from discord.ext import commands
 from discord.utils import get
+from flask import Flask, Blueprint, request, jsonify
 
 import db_session
 from db_session import Session, BaseConfigMix
 from db_session.base import User, Member, Guild, Message
+from .const import HeadersApi
 from .enums import TypeBot
 from .extra import HRF, full_using_db, run_if_ready_db
 from .help import HelpCommand
@@ -20,13 +24,38 @@ from .help import HelpCommand
 logging = logging.getLogger(__name__)
 
 
+class ApiBP:
+    blueprint: Blueprint
+
+    def __init__(self, cog):
+        self.blueprint.before_app_request(self.before_check_request)
+        self.blueprint.route('/')(self.index)
+        self.cog: Cog = cog
+
+    def get_routes(self):
+        return _GetRuleFromSetupState()(self.blueprint)
+
+    def index(self):
+        return jsonify(self.get_routes().keys())
+
+    def before_check_request(self):
+        guild_id = request.headers.get(HeadersApi.GUILD_ID)
+        api_key = request.headers.get(HeadersApi.API_KEY)
+        if not guild_id or not api_key:
+            return jsonify(status='400', msg='Bad request')
+        with db_session.create_session() as session:
+            self.cog.get_config(session, guild_id)
+
+
 class Bot(commands.Bot):
-    def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, **options):
+    def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
+                 turn_on_api_server=False, **options):
         super().__init__(intents=options.pop("intents", discord.Intents.all()),
                          help_command=options.pop('help_command', HelpCommand()),
                          **options)
         self.__db_connect = db_con
         self.__models = {}
+        self.__blueprints = {}  # "/url_prefix": <class: blueprint>
 
         if bot_type == TypeBot.self:
             self._skip_check = lambda x, y: x != y
@@ -50,6 +79,7 @@ class Bot(commands.Bot):
         self.after_invoke(self.on_after_invoke)
 
         self.__ready_db = False
+        self.flask_app = Flask(app_name) if turn_on_api_server else None
 
         logging.info(f'init bot {self.name} {self.version}')
 
@@ -308,6 +338,14 @@ class Bot(commands.Bot):
                 raise ValueError(f"Модель {model.__name__} уже зарегистрирована или передана дважды")
             self.__models[model.__name__] = model
 
+    def add_blueprint(self, blueprint: ApiBP, *args, url_prefix: str, **kwargs):
+        if url_prefix in self.__blueprints:
+            raise ValueError(f"На prefix_url='{url_prefix}' уже зарегистрирован blueprint")
+        self.__blueprints[url_prefix] = blueprint
+
+        if self.flask_app:  # Добавляем в сам flask только если мы его вкл.
+            self.flask_app.register_blueprint(blueprint.blueprint, *args, url_prefix=url_prefix, **kwargs)
+
     def get_voice_client(self, guild: discord.Guild) -> Optional[VoiceClient]:
         return get(self.voice_clients, guild=guild)
 
@@ -340,13 +378,19 @@ class Bot(commands.Bot):
 
     # Взаимодействие с cogs
     def load_all_extensions(self, filenames: list):
-        for filename in filenames:
+        """Загружаем все указанные расширения. Желательно вызвать эту функцию перед выходом в сеть"""
+
+        logging.info("=" * 6 + f"Загружаем расширения" + "=" * 6)
+        for i, filename in enumerate(filenames, start=1):
             try:
+                logging.info(f"Загружаем {filename} ({i}/{len(filenames)})")
                 __import__(filename, fromlist='setup').setup(self)
-                logging.info(f"загружен {filename}")
 
             except ImportError as E:
-                logging.warning(f"ошибка загрузки {filename}'{E.__class__.__name__}: {E}'")
+                logging.warning(f"Ошибка загрузки в {filename} '{E.__class__.__name__}: {E}'")
+                raise E
+
+        logging.info("=" * 6 + f"Загрузка выполнена" + "=" * 6)
 
     def reload_all_extensions(self):
         for ext in self.extensions:
@@ -358,32 +402,56 @@ class Bot(commands.Bot):
         User.update_all(session, self.users)
         Member.update_all(session, self.get_all_members())
 
-        roles = []
-        for guild in self.guilds:
-            roles += guild.roles
-        # Role.update_all(session, roles)  # TODO: Вообновить обновление ролей
-        logging.info('Update all data is completed')
+        logging.info('=' * 6 + 'Обновление бд выполнено' + '=' * 6)
 
-    # noinspection PyMethodMayBeStatic
-    def delete_all_data(self, session: db_session.Session):
-        [g.delete() for g in session.query(Guild).all()]
-        [m.delete() for m in session.query(Member).all()]
-        [u.delete() for u in session.query(User).all()]
-
-    # TODO: Сделать
-    # noinspection PyMethodMayBeStatic,PyUnusedLocal
-    def prefix(self, message: discord.Message):
-        with db_session.create_session() as session:
-            pass
+    # TODO: Сделать получение уникального Prefix для каждого сервера
 
     def run(self, *args, **kwargs):
         if self.using_db:
             db_session.global_init(self.__db_connect, self.__models)
-        return super().run(*args, **kwargs)
+
+        loop = self.loop
+
+        async def runner_discord():
+            try:
+                await self.start(*args, **kwargs)
+            finally:
+                if not self.is_closed():
+                    await self.close()
+
+        async def runner_flask():
+            try:
+                thread = Thread(target=self.flask_app.run, kwargs={"host": '0.0.0.0', "port": 80}, daemon=True)
+                thread.start()
+                while thread.is_alive():
+                    await asyncio.sleep(1)
+            finally:
+                pass
+
+        def stop_loop_on_completion(_):
+            loop.stop()
+
+        future = asyncio.ensure_future(runner_discord(), loop=loop)
+        future.add_done_callback(stop_loop_on_completion)
+
+        if self.flask_app and self.__blueprints:
+            # Если есть хотя бы 1 указанный blueprint и вкл. flask,
+            # то запускаем flask сервер
+            future2 = asyncio.ensure_future(runner_flask(), loop=loop)
+            future2.add_done_callback(stop_loop_on_completion)
+
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt:
+            logging.info('Received signal to terminate bot and event loop.')
+        finally:
+            future.remove_done_callback(stop_loop_on_completion)
 
 
 class Cog(commands.Cog, name="Без названия"):
     cls_config: BaseConfigMix
+    count_inited = 0
+    count_ready = 0
 
     def __init__(self, bot: Bot, cls_config=None):
         self.bot = bot
@@ -394,6 +462,7 @@ class Cog(commands.Cog, name="Без названия"):
 
         if cls_config is not None:
             self.bot.add_models(cls_config)
+        Cog.count_inited += 1
 
     def __repr__(self):
         return str(self)
@@ -446,12 +515,14 @@ class Cog(commands.Cog, name="Без названия"):
         await self.bot.wait_until_ready()
 
         if self.using_db and self.cls_config is not None:
-            session = db_session.create_session()
-            for guild in self.bot.guilds:
-                self.update_config(session, guild)
-            session.commit()
-            session.close()
-        logging.info(f'{self.qualified_name} Готов')
+            with db_session.create_session() as session:
+                for guild in self.bot.guilds:
+                    self.update_config(session, guild)
+                session.commit()
+
+        Cog.count_ready += 1
+
+        logging.info(f'{self.__class__.__name__}: Готов! (Всего {Cog.count_ready}/{Cog.count_inited})')
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
@@ -553,6 +624,31 @@ class Context(commands.Context):
     @staticmethod
     def getattr(a, attr=None, default=None):
         return (getattr(a, attr) if attr else a) if a else default
+
+
+class _GetRuleFromSetupState:
+    """Этот класс служит чисто для выкачки из blueprint.deferred_functions routes и функции созданные
+    методом blueprint.route"""
+
+    def __init__(self, blueprint: Blueprint = None):
+        self.__blueprint = blueprint
+
+    def __call__(self, blueprint: Blueprint = None):
+        if not self.__blueprint and not blueprint:
+            return {}
+
+        result = {}
+        for func in (self.__blueprint or blueprint).deferred_functions:
+            try:
+                rule, endpoint, f, options = func(self)
+                result[rule] = (endpoint, f, options)
+            except AttributeError:
+                pass
+        return result
+
+    @staticmethod
+    def add_url_rule(rule, endpoint, f, **options):
+        return rule, endpoint, f, options
 
 
 Cog.cog_check.__annotations__['ctx'] = Context

@@ -1,5 +1,4 @@
 from typing import NewType, Union
-
 import discord
 
 ALL_GOOD_TYPES = NewType('all_good_types', Union[
@@ -33,3 +32,8 @@ TEXT_EMOJI_NUMBERS = {
     9: "nine",
     10: "keycap_ten"
 }
+
+
+class HeadersApi:
+    GUILD_ID = "guild-id"
+    API_KEY = "api-key"

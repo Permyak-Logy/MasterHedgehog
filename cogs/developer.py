@@ -1,30 +1,79 @@
 import asyncio
 import datetime
-
+import argparse
 import discord
 from discord.errors import Forbidden
 from discord.ext import commands
-from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy import Column, Integer, ForeignKey, String, DateTime
 
 import db_session
 from PLyBot import Bot, Cog, join_string, Context
 from db_session import SqlAlchemyBase
 from db_session.const import MIN_DATETIME
+import secrets
+
+activate_parser = argparse.ArgumentParser()
+activate_parser.add_argument('-A', action="store_true")
 
 
-class APIKeys(SqlAlchemyBase):
-    __tablename__ = "api_keys"
+class Permissions:
+    VIEW = 1
+    EDIT = 2
 
-    user = Column(Integer, ForeignKey('users.id'), primary_key=True)
+    @staticmethod
+    def make(**flags) -> int:
+        flag = 0
+
+        flag |= Permissions.VIEW if flags.pop('view', 0) else 0
+        flag |= Permissions.EDIT if flags.pop('edit', 0) else 0
+
+        if flags:
+            raise TypeError(f'Передан неизвестный ключ {flags}')
+
+        return flag
+
+
+# TODO: Доделать
+class ApiKey(SqlAlchemyBase):  # TODO: Ассиметричное шифрование добавить
+    __tablename__ = 'api_keys'
+
+    key = Column(String, primary_key=True)
+    permission = Column(Integer, nullable=False, default=Permissions.make())
+    until_active = Column(DateTime)
+
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(Integer, nullable=False, default=datetime.datetime.now)
+    created_for_guild = Column(Integer, ForeignKey('guilds.id'), nullable=False)
+
+    @staticmethod
+    def get(session: db_session.Session, key: str):
+        return session.query(ApiKey).filter(ApiKey.key == key).first()
+
+    def gen(self, ctx: Context, permission_flags=0, until_active: datetime.datetime = None):
+        self.key = secrets.token_hex(32)
+        self.permission = Permissions.make()
+        self.until_active = datetime.datetime.now()
+
+        self.created_by = ctx.author.id
+        self.created_for_guild = ctx.guild.id
+
+        self.until_active = until_active
+        self.permission = permission_flags
+
+    def __repr__(self):
+        return f"ApiKey"
+
+    def __str__(self):
+        return repr(self)
 
 
 # TODO: Русифицировать команды
 class DeveloperCog(Cog, name="Для разработчиков"):
     def __init__(self, bot: Bot):
         super().__init__(bot)
-        # self.bot.add_models(APIKeys)
+        self.bot.add_models(ApiKey)
 
-    @commands.command(aliases=['act'])
+    @commands.command(name='activate', aliases=['act'])
     @commands.is_owner()
     @commands.guild_only()
     async def activate(self, ctx: Context, cog: str = "ALL"):
@@ -35,17 +84,16 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         cogs = list(filter(bool, map(self.bot.get_cog, self.bot.cogs))) if cog == "ALL" else [self.bot.get_cog(cog)]
         assert cogs, "Не найден модуль"
         activated = []
-        session = db_session.create_session()
-        for cog in cogs:
-            if not (isinstance(cog, Cog) and cog.cls_config is not None):
-                continue
-            config = cog.get_config(session, guild)
-            if not hasattr(config, "active_until"):
-                continue
-            config.active_until = None
-            activated.append(cog.qualified_name)
-        session.commit()
-        session.close()
+        with db_session.create_session() as session:
+            for cog in cogs:
+                if not (isinstance(cog, Cog) and cog.cls_config is not None):
+                    continue
+                config = cog.get_config(session, ctx.guild)
+                if not hasattr(config, "active_until"):
+                    continue
+                config.active_until = None
+                activated.append(cog.qualified_name)
+            session.commit()
         activated = "\n\t".join(activated)
         embed = discord.Embed(title="Успешно!", description=f'На сервере были успешно активированы модули:\n\t'
                                                             f'{activated}', colour=self.bot.colour_embeds)
@@ -62,18 +110,17 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         cogs = list(filter(bool, map(self.bot.get_cog, self.bot.cogs))) if cog == "ALL" else [self.bot.get_cog(cog)]
         assert cogs, "Не найден модуль"
         activated = []
-        session = db_session.create_session()
-        for cog in cogs:
-            if not (isinstance(cog, Cog) and cog.cls_config is not None):
-                continue
-            config = cog.get_config(session, guild)
-            if not hasattr(config, "active_until"):
-                continue
-            config.active_until = MIN_DATETIME
-            activated.append(cog.qualified_name)
+        with db_session.create_session() as session:
+            for cog in cogs:
+                if not (isinstance(cog, Cog) and cog.cls_config is not None):
+                    continue
+                config = cog.get_config(session, guild)
+                if not hasattr(config, "active_until"):
+                    continue
+                config.active_until = MIN_DATETIME
+                activated.append(cog.qualified_name)
 
-        session.commit()
-        session.close()
+            session.commit()
         activated = "\n\t".join(activated)
         embed = discord.Embed(title="Успешно!", description=f'На сервере были успешно деактивированы модули:\n\t'
                                                             f'{activated}', colour=self.bot.colour_embeds)
@@ -97,18 +144,13 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             except ValueError:
                 assert False, "Неверный формат даты"
 
-        session = db_session.create_session()
-        config = cog.get_config(session, guild)
+        with db_session.create_session() as session:
+            config = cog.get_config(session, guild)
 
-        try:
             assert hasattr(config, "active_until"), "В этом модуле нет настройки активности"
-        except AssertionError as E:
-            session.close()
-            raise E
 
-        config.active_until = date
-        session.commit()
-        session.close()
+            config.active_until = date
+            session.commit()
 
         await ctx.send(embed=discord.Embed(
             title="Успех", description=f"Время активности {cog} сервера {guild} установленно на {date}",
@@ -123,16 +165,16 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         cog = self.bot.get_cog(cog)
         assert isinstance(cog, Cog) and cog.cls_config is not None, "Данный модуль не работает с базой данных"
 
-        session = db_session.create_session()
-        config = cog.get_config(session, guild)
-        session.close()
-        assert hasattr(config, "active_until"), "В этом модуле нет настройки активности"
-        embed = discord.Embed(title=f"Сервер {guild}", description="Модуль {cog} активен {msg}")
-        if config.active_until:
-            embed.description = embed.description.format(cog=cog, msg=f"до {config.active_until}")
-        else:
-            embed.description = embed.description.format(cog=cog, msg=f"неограниченно")
-        await ctx.send(embed=embed)
+        with db_session.create_session() as session:
+            config = cog.get_config(session, guild)
+
+            assert hasattr(config, "active_until"), "В этом модуле нет настройки активности"
+            embed = discord.Embed(title=f"Сервер {guild}", description="Модуль {cog} активен {msg}")
+            if config.active_until:
+                embed.description = embed.description.format(cog=cog, msg=f"до {config.active_until}")
+            else:
+                embed.description = embed.description.format(cog=cog, msg=f"неограниченно")
+            await ctx.send(embed=embed)
 
     # TODO: Сделать бан гильдии, разбан гильдии, отправка сообщения пользователю, перезагрузка
     @commands.command()

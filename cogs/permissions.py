@@ -2,15 +2,17 @@ import json
 
 import discord
 from discord.ext import commands
+from flask import Blueprint
 
 import db_session
-from PLyBot import Cog, Bot
+from PLyBot import Cog, Bot, ApiBP
 from db_session.const import DEFAULT_ACCESS
 
 
 class PermissionsCog(Cog, name="Права доступа"):
     def __init__(self, bot: Bot):
         super().__init__(bot)
+        self.bot.add_blueprint(PermissionsBP(self), url_prefix='/permissions')
 
     async def cog_check(self, ctx: commands.Context):
         # TODO: Исправить
@@ -171,6 +173,10 @@ class PermissionsCog(Cog, name="Права доступа"):
             await ctx.send("```python\n" + "\n".join(text) + "\n```")
         else:
             await ctx.send("```python\nУ вас нет доступных модулей\n```")
+
+
+class PermissionsBP(ApiBP):
+    blueprint = Blueprint('permissions_api', __name__)
 
 
 def setup(bot: Bot):

@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 import db_session
 from PLyBot import Bot, get_any
 from PLyBot import Cog
+from PLyBot.bot import ApiBP
 from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
 
 
@@ -55,6 +56,7 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
 
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=PrivateChannelsConfig)
+        self.bot.add_blueprint(PrivateChannelsBP(self), url_prefix='/private_channels')
 
     def get_config(self, session: db_session.Session,
                    guild: Union[discord.Guild, int]) -> Optional[PrivateChannelsConfig]:
@@ -118,24 +120,30 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
                                 pass
 
 
-# noinspection PyUnusedLocal
-class PrivateChannelsBP:
+class PrivateChannelsBP(ApiBP):
     blueprint = Blueprint('private_channels_api', __name__)
+
+    def __init__(self, cog):
+        super(PrivateChannelsBP, self).__init__(cog)
 
     @staticmethod
     @blueprint.route('/channels', methods=['GET', 'POST'])
     def get_channels_bp():
         with db_session.create_session() as session:
-            config_id = request.headers['config-id']
-            api_key = request.headers['api-key']
+            config_id = request.headers.get('config-id')
+            # api_key = request.headers['api-key']
+            if not config_id:
+                return jsonify(error="bad config-id")
 
             config: PrivateChannelsConfig = session.query(PrivateChannelsConfig).filter(
                 PrivateChannelsConfig.guild_id == int(config_id)).first()
-
+            if not config:
+                return jsonify(error="bad config-id")
             if request.method == 'GET':
-                return jsonify(ids=list(map(int, config.channels.split(';'))))
+                channels = config.channels
+                return jsonify(ids=list(map(int, channels.split(';') if channels else [])))
             elif request.method == 'POST':
-                return "ok post"
+                return jsonify(status="ok post")
 
 
 def setup(bot: Bot):

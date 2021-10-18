@@ -6,7 +6,7 @@ from typing import Union, Optional, Type, Iterable, Callable
 
 from discord import Status
 
-logging = logging.getLogger(__name__)
+__logging = logging.getLogger(__name__)
 
 ONLINE = 1
 OFFLINE = 2
@@ -155,7 +155,7 @@ def run_if_ready_db(*, default_return=None, is_async=False):
 def plug_func(res_default=None):
     def decorator(func):
         nonlocal res_default
-        logging.warning(f"use plug func {func}. returned: '{repr(res_default)}'")
+        __logging.warning(f"use plug func {func}. returned: '{repr(res_default)}'")
         return lambda *_, **__: res_default
 
     return decorator
@@ -164,7 +164,7 @@ def plug_func(res_default=None):
 def plug_afunc(res_default=None):
     def decorator(func):
         nonlocal res_default
-        logging.warning(f"use plug afunc {func}. returned: '{repr(res_default)}'")
+        __logging.warning(f"use plug afunc {func}. returned: '{repr(res_default)}'")
 
         async def wp(*_, **__):
             return res_default
