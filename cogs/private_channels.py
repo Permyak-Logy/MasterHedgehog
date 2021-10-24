@@ -56,7 +56,7 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
 
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=PrivateChannelsConfig)
-        self.bot.add_blueprint(PrivateChannelsBP(self), url_prefix='/private_channels')
+        self.bot.add_cog_blueprint(PrivateChannelsBP(self), url_prefix='/private_channels')
 
     def get_config(self, session: db_session.Session,
                    guild: Union[discord.Guild, int]) -> Optional[PrivateChannelsConfig]:

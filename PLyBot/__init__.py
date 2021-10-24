@@ -1,4 +1,4 @@
-from .api import ApiCog, ApiKey, BaseApiBP
+from .api import AccessCog, ApiKey, BaseApiBP
 from .bot import Bot, Cog, Context
 from .extra import Check, HRF, DBTools
 from .extra import ONLINE, OFFLINE, IDLE, DND, INVISIBLE, T

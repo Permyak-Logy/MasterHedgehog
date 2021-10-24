@@ -1,6 +1,6 @@
-Flask~=1.1.2
-discord~=1.0.1
+discord~=1.7.3
 pyttsx3~=2.90
 SQLAlchemy~=1.4.3
+Flask~=1.1.2
 requests~=2.25.1
 youtube-dl~=2021.4.7

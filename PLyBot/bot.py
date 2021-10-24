@@ -31,7 +31,9 @@ class Bot(commands.Bot):
                          **options)
         self.__db_connect = db_con
         self.__models = {}
+
         self.__blueprints = {}  # "/url_prefix": <class: blueprint>
+        self.__cog_blueprints = {}
 
         if bot_type == TypeBot.self:
             self._skip_check = lambda x, y: x != y
@@ -58,6 +60,7 @@ class Bot(commands.Bot):
         if turn_on_api_server:
             self.flask_app = Flask(app_name)
             self.flask_app.route('/')(self.index_api)
+
         else:
             self.flask_app = None
 
@@ -81,7 +84,7 @@ class Bot(commands.Bot):
     def ready_db(self):
         return self.__ready_db
 
-    # Слушатели событий
+    # Слушатели событий #####################################################
     async def on_ready(self):
         if self.using_db:
             with db_session.create_session() as session:
@@ -305,7 +308,7 @@ class Bot(commands.Bot):
     async def on_after_invoke(self, _):
         self.count_invokes += 1
 
-    # Полезные методы
+    # Полезные методы #####################################################
     def add_cogs(self, *cogs: commands.Cog):
         for cog in cogs:
             self.add_cog(cog)
@@ -318,18 +321,27 @@ class Bot(commands.Bot):
                 raise ValueError(f"Модель {model.__name__} уже зарегистрирована или передана дважды")
             self.__models[model.__name__] = model
 
-    def add_blueprint(self, blueprint, *args, url_prefix: str, **kwargs):
-        if url_prefix in self.__blueprints:
-            raise ValueError(f"На prefix_url='{url_prefix}' уже зарегистрирован blueprint")
-        self.__blueprints[url_prefix] = blueprint
+    def add_cog_blueprint(self, blueprint, *args, url_prefix: str, **kwargs):
+        self.add_blueprint(blueprint.blueprint, *args, url_prefix=url_prefix, **kwargs)
+
+        self.__cog_blueprints[url_prefix] = blueprint
 
         if self.flask_app:  # Добавляем в сам flask только если мы его вкл.
             self.flask_app.register_blueprint(blueprint.blueprint, *args, url_prefix=url_prefix, **kwargs)
 
+    def add_blueprint(self, blueprint: Blueprint, *args, url_prefix: str, **kwargs):
+        if url_prefix in self.__blueprints:
+            raise ValueError(f"На prefix_url='{url_prefix}' уже зарегистрирован blueprint")
+
+        self.__blueprints[url_prefix] = blueprint
+
+        if self.flask_app:  # Добавляем в сам flask только если мы его вкл.
+            self.flask_app.register_blueprint(blueprint, *args, url_prefix=url_prefix, **kwargs)
+
     def get_voice_client(self, guild: discord.Guild) -> Optional[VoiceClient]:
         return get(self.voice_clients, guild=guild)
 
-    # Команды
+    # Команды #####################################################
     async def process_commands(self, message: discord.Message):
         if message.author.bot:
             return
@@ -356,7 +368,7 @@ class Bot(commands.Bot):
         self.add_command(command)
         return command
 
-    # Взаимодействие с cogs
+    # Взаимодействие с cogs #####################################################
     def load_all_extensions(self, filenames: list):
         """Загружаем все указанные расширения. Желательно вызвать эту функцию перед выходом в сеть"""
 
@@ -376,7 +388,7 @@ class Bot(commands.Bot):
         for ext in self.extensions:
             self.reload_extension(ext)
 
-    # Глобальное взаимодействие с данными
+    # Глобальное взаимодействие с данными #####################################################
     def update_all_data(self, session: db_session.Session):
         Guild.update_all(session, self.guilds)
         User.update_all(session, self.users)
@@ -384,15 +396,17 @@ class Bot(commands.Bot):
 
         logging.info('=' * 6 + 'Обновление бд выполнено' + '=' * 6)
 
-    # routes для Flask
+    # routes для Flask #####################################################
     def index_api(self):
-        response = {}
-        for url_rule, bp in self.__blueprints.items():
-            response[bp.cog.qualified_name] = url_rule
+        response = {"cogs": {}}
+        for url_rule, bp in self.__cog_blueprints.items():
+            if hasattr(bp, "cog"):
+                response["cogs"][bp.cog.qualified_name] = url_rule
         return response
 
     # TODO: Сделать получение уникального Prefix для каждого сервера
 
+    # Runner #####################################################
     def run(self, *args, **kwargs):
         if self.using_db:
             db_session.global_init(self.__db_connect, self.__models)
@@ -421,7 +435,7 @@ class Bot(commands.Bot):
         future = asyncio.ensure_future(runner_discord(), loop=loop)
         future.add_done_callback(stop_loop_on_completion)
 
-        if self.using_db and self.flask_app and self.__blueprints:
+        if self.using_db and self.flask_app and self.__cog_blueprints:
             # Если есть хотя бы 1 указанный blueprint и вкл. flask,
             # то запускаем flask сервер
             future2 = asyncio.ensure_future(runner_flask(), loop=loop)
