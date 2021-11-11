@@ -54,7 +54,7 @@ class InfoCog(Cog, name="Информация"):
             embed.set_footer(text="PyPLy ©", icon_url=owner.avatar_url)
             embed.add_field(name="Мой разработчик", value=f"{owner}")
             embed.set_image(
-                url="https://cdn.discordapp.com/attachments/653543360161644545/841752019199197264/PyPLy_Neon.png")
+                url="https://cdn.discordapp.com/attachments/832900181534965810/903237957362778152/PyPLy.png")
         await asyncio.sleep(1.5)
         await ctx.send(embed=embed)
 
@@ -77,7 +77,7 @@ class InfoCog(Cog, name="Информация"):
             title="Нажми сюда чтобы меня добавить на свой сервер", description=f"||{link}||", url=link,
             colour=ctx.bot.colour_embeds).set_thumbnail(url=ctx.bot.user.avatar_url))
 
-    # TODO: Замьючено на время работ
+    # TODO: заглушено на время работ
     # @commands.command(name="синтакс", aliases=["syntax"])
     async def syntax(self, ctx: Context):
         """
