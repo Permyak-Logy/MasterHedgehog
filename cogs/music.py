@@ -9,7 +9,7 @@ from discord.ext import commands
 from discord.utils import get
 from youtube_dl import YoutubeDL
 
-from PLyBot import Bot, Cog, plug_func
+from PLyBot import Bot, Cog, plug_func, Context
 
 # noinspection SpellCheckingInspection
 CONVERSATION_DATA = {
@@ -45,9 +45,10 @@ YDL_OPTIONS = {
 
 # TODO: Сделать воспроизведение по кодовому слову
 
-class MusicCog(Cog, name='Музыка'):
+# TODO: УСТАРЕЛ класс музыки
+class OldMusicCog(Cog, name='Музыка'):
     def __init__(self, bot: Bot):
-        super(MusicCog, self).__init__(bot)
+        super(OldMusicCog, self).__init__(bot)
         self.turn_music = {}
 
     @commands.Cog.listener('on_message')
@@ -84,7 +85,7 @@ class MusicCog(Cog, name='Музыка'):
 
     @commands.command()
     @commands.guild_only()
-    async def play(self, ctx: commands.Context, *search: str):
+    async def play(self, ctx: commands.Context, *, search: str):
         if not ctx.guild.voice_client:
             voice = await ctx.author.voice.channel.connect()
         else:
@@ -99,7 +100,7 @@ class MusicCog(Cog, name='Музыка'):
         await ctx.send('Подготовка музыки. Подождите', delete_after=10)
 
         with YoutubeDL(ydl_options) as ydl:
-            info = ydl.extract_info(" ".join(search) if not isinstance(search, str) else search, download=True)
+            info = ydl.extract_info(search if not isinstance(search, str) else search, download=True)
 
         # noinspection PyUnusedLocal
         url = info['entries'][0]['formats'][0]['url']
@@ -128,6 +129,61 @@ class MusicCog(Cog, name='Музыка'):
         assert voice.is_playing() or voice.is_paused(), "Сейчас ничего не играет"
         voice.stop()
         await ctx.send(embed=discord.Embed(description='Музыка остановлена'))
+
+
+class MusicCog(Cog, name='Музыка'):
+    def __init__(self, bot: Bot):
+        super().__init__(bot)
+        self.sessions = {}
+        # sessions = { guild_id-int: {"channel": int, "ctrl_msg": msg_id-int, "isPlaying": bool, "stream": obj,
+        # "tmp": {"search": [ ...results_of_search... ]}}
+
+    @staticmethod
+    async def start_play(voice: VoiceClient, url):
+        if voice.is_playing() or voice.is_paused():
+            voice.stop()
+        voice.play(discord.FFmpegPCMAudio(url))
+        while voice.is_playing() or voice.is_connected():
+            await asyncio.sleep(1)
+
+    async def clearer(self):
+        # Цикл который каждый тик очищает старые сообщения с поиском
+        pass
+
+    @commands.command()
+    async def music_on(self, ctx: Context):
+        if not ctx.guild.voice_client:
+            voice = await ctx.author.voice.channel.connect()
+        else:
+            voice: discord.VoiceClient = get(self.bot.voice_clients, guild=ctx.guild)
+            await voice.disconnect()
+            voice = await ctx.author.voice.channel.connect()
+        await ctx.reply(embed=discord.Embed(title="Успешно", description=f"Я подключился к каналу {voice.channel}"))
+
+    @commands.command()
+    async def music_off(self, ctx: Context):
+        # Остановка музыки и уход из канала
+        if ctx.guild.voice_client:
+            voice: discord.VoiceClient = get(self.bot.voice_clients, guild=ctx.guild)
+            await voice.disconnect()
+        await ctx.reply(embed=discord.Embed(title="Успешно", description="Я покидаю вас..."))
+
+    @commands.command()
+    async def music_search(self, ctx: Context, *, search):
+        # Поиск музыки в интернете (и её запуск если был
+        ydl_options = YDL_OPTIONS.copy()
+        ydl_options['outtmpl'] = f'audio\\yt_song{ctx.guild.id}.mp3'
+        with YoutubeDL(ydl_options) as ydl:
+            info = ydl.extract_info(search if not isinstance(search, str) else search, download=True)
+
+        # noinspection PyUnusedLocal
+        url = info['entries'][0]['formats'][0]['url']
+        await ctx.send(embed=discord.Embed(description=f'Играет: {info["entries"][0]["title"]}'))
+        await self.start_play(get(self.bot.voice_clients, guild=ctx.guild), ydl_options['outtmpl'])
+
+    async def on_raw_reaction_add(self):
+        # Включение по реакции и просто управление музыкой
+        pass
 
 
 @plug_func()
