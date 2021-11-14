@@ -4,7 +4,7 @@
     "db_con": "sqlite:///db/mh.sqlite?check_same_thread=False",
     "game_activity": "кустики",
     "bot_name": "Хог",
-    "turn_on_api_server": true
+    "turn_on_api_server": false
   },
   "admins": [
     403910550028943361,

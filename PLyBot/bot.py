@@ -577,6 +577,20 @@ class Cog(commands.Cog, name="Без названия"):
 
         return config
 
+    @staticmethod
+    def on_func_error(coro):
+        # TODO: Тип обработчик ошибок. Но нужно доработать (для before_invoke)
+        def wrapper(function):
+            async def wp(self, ctx, *args, **kwargs):
+                try:
+                    return await function(ctx, *args, **kwargs)
+                except Exception as error:
+                    await coro(self, ctx, error)
+
+            return wp
+
+        return wrapper
+
 
 class Context(commands.Context):
     bot: Optional[Bot]
@@ -619,7 +633,7 @@ class Context(commands.Context):
         return super(Context, self).me
 
     @property
-    def voice_client(self) -> Optional[discord.VoiceProtocol]:
+    def voice_client(self) -> Optional[Union[discord.VoiceProtocol, discord.VoiceClient]]:
         return super(Context, self).voice_client
 
     @staticmethod

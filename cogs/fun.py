@@ -114,7 +114,7 @@ class FunCog(Cog, name="Веселье"):
         filename = f"audio\\{ctx.guild.id}-{ctx.author.id}-{member.id}.mp3"
         engine.save_to_file(text, filename)
         engine.runAndWait()
-        from cogs.music import MusicCog
+        from cogs.oldmusic import MusicCog
         cog: MusicCog = self.bot.get_cog('Музыка')
         voice_m: discord.VoiceState = member.voice
         channel: discord.VoiceChannel = voice_m.channel

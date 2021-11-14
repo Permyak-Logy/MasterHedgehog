@@ -129,7 +129,7 @@ class EconomyCog(Cog, name='Экономика'):
         return super().get_config(session, guild)
 
     @commands.Cog.listener('on_ready')
-    async def on_ready(self):
+    async def update_features_and_balance_members(self):
         with db_session.create_session() as session:
             for member in self.bot.get_all_members():
                 DBEconomyTools.update_features_member(session, member)
