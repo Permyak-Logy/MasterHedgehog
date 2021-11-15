@@ -3,7 +3,7 @@
     "command_prefix": "!!",
     "db_con": "sqlite:///db/mh.sqlite?check_same_thread=False",
     "game_activity": "кустики",
-    "bot_name": "Хог",
+    "bot_name": "Ёжа",
     "turn_on_api_server": false
   },
   "admins": [

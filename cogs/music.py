@@ -1,15 +1,16 @@
 import asyncio
 
 import discord
+import sqlalchemy
 import youtube_dl
 
 from discord.ext import commands
-from discord.utils import get
-
 from PLyBot import Bot, Cog, Context
+from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
+    # noinspection SpellCheckingInspection
     YTDL_FORMAT_OPTIONS = {
         'format': 'bestaudio/best',
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
@@ -38,6 +39,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.data = data
 
         self.title = data.get('title')
+        self.thumbnail = data.get('thumbnail')
+        self.channel = data.get('channel')
         self.url = data.get('url')
 
     @classmethod
@@ -53,11 +56,20 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **cls.FFMPEG_OPTIONS), data=data)
 
 
+class MusicConfig(SqlAlchemyBase, BaseConfigMix):
+    __tablename__ = "music_configs"
+
+    guild_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('guilds.id'),
+                                 primary_key=True, nullable=False)
+    access = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='{}')
+    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
+
+
 class MusicCog(Cog):
     # TODO: Сделать обновление плейера при завершении игры музыки
 
     def __init__(self, bot: Bot):
-        super().__init__(bot)
+        super().__init__(bot, cls_config=MusicConfig)
         self.__online_music_players = {}
 
     @commands.command()
@@ -71,7 +83,7 @@ class MusicCog(Cog):
 
     @commands.command()
     async def play(self, ctx: Context, *, url):
-        """Streams from a url (same as yt, but doesn't predownload)"""
+        """Streams from a url (same as yt, but doesn't pre download)"""
 
         if ctx.voice_client is None:
             assert ctx.author.voice, "Author not connected to a voice channel."
@@ -84,12 +96,20 @@ class MusicCog(Cog):
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
             ctx.voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
 
-        msg: discord.Message = await ctx.send(embed=discord.Embed(
+        emb = discord.Embed(
             title='Муз плейер',
-            description=f'Играет: {player.title}').add_field(name='Статус', value='🟢 Играет'))
+            description=f'**Играет:** {player.title}')
+        emb.add_field(
+            name='Статус', value='🟢 Играет').add_field(
+            name="Громкость", value=str(round(ctx.voice_client.source.volume * 100)) + "%")
+        emb.set_thumbnail(url=player.thumbnail)
+        emb.set_footer()
+        msg: discord.Message = await ctx.send(embed=emb)
 
         await msg.add_reaction('⏯️')
         await msg.add_reaction('⏹️')
+        await msg.add_reaction('🔉')
+        await msg.add_reaction('🔊')
         self.__online_music_players[ctx.guild.id] = msg.id
 
     @commands.command()
@@ -118,6 +138,7 @@ class MusicCog(Cog):
         except (discord.NotFound, AttributeError):
             return
         await msg.remove_reaction(payload.emoji, payload.member)
+
         if payload.member == self.bot.user:
             return
 
@@ -130,6 +151,10 @@ class MusicCog(Cog):
                     voice_client.pause()
             elif payload.emoji.name == '⏹️':
                 voice_client.stop()
+            elif payload.emoji.name == '🔉':
+                voice_client.source.volume = max(0, voice_client.source.volume - 0.1)
+            elif payload.emoji.name == '🔊':
+                voice_client.source.volume = min(1, voice_client.source.volume + 0.1)
             else:
                 return
 
@@ -142,8 +167,10 @@ class MusicCog(Cog):
         if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
             embed.add_field(name='Статус', value=(
                 '🟢 Играет' if not voice_client.is_paused() else '🟠 Пауза'))
+            embed.add_field(name="Громкость", value=str(round(voice_client.source.volume * 100)) + "%")
         else:
             embed.add_field(name='Статус', value='🔴 Кончилась')
+            embed.add_field(name="Громкость", value='---')
             del self.__online_music_players[message.guild.id]
 
         await message.edit(embed=embed)

@@ -33,10 +33,11 @@ def main():
 
         bot_type=TypeBot.both,
         permissions=8,  # == Администратор
-        version="Beta 0.10.1"  # Дата 18.10.2021
+        version="Beta 0.11"  # Дата 15.11.2021
     )
 
-    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warface.py', 'warframe.py']),
+    # noinspection SpellCheckingInspection
+    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warface.py', 'warframe.py', 'oldmusic.py']),
                         os.listdir('cogs'))
     cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names))
 
