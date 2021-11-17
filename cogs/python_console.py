@@ -7,6 +7,15 @@ from discord.ext import commands
 from PLyBot import Bot, Cog
 
 
+class F:
+    @staticmethod
+    def mapattr(attr, arr, sep=', '):
+        def local_get_attr(elem):
+            return str(getattr(elem, attr))
+
+        return sep.join(list(map(local_get_attr, arr)))
+
+
 class PythonConsoleCog(Cog, name='PyConsole'):
     """
     Модуль для взаимодействия с системой бота через команды
@@ -82,6 +91,8 @@ class PythonConsoleCog(Cog, name='PyConsole'):
             await ctx.send(embed=embed)
         except RuntimeError:
             pass
+
+    # TODO: Сделать вложенные await'ы
 
     @commands.command('exec', aliases=['ex'])
     @commands.is_owner()

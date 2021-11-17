@@ -37,12 +37,10 @@ def main():
     )
 
     # noinspection SpellCheckingInspection
-    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warface.py', 'warframe.py', 'oldmusic.py']),
-                        os.listdir('cogs'))
-    cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names))
-
-    cogs.append('PLyBot.info')
-    cogs.append('PLyBot.api')
+    # cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warframe.py', 'APs.py']),
+    #                     os.listdir('cogs'))
+    cogs_names = ['exp_cog.py', 'python_console.py']
+    cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names)) + ['PLyBot.info', 'PLyBot.api']
     bot.load_all_extensions(cogs)
 
     with open('token.txt', encoding='utf8') as token_file:

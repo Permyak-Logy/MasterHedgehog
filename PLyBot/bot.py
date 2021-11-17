@@ -562,9 +562,10 @@ class Cog(commands.Cog, name="Без названия"):
                     del access[key]
 
             # Добавляем всё недостающее
+            print('-----------')
             for command in self.get_commands():
                 command: commands.Command
-                # print(command, command.parents)
+                print(command, command.parents, guild)
                 if str(command) not in access:
                     access[str(command)] = {}
             if "__cog__" not in access:
