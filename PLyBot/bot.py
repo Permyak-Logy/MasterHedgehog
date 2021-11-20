@@ -348,12 +348,14 @@ class Bot(commands.Bot):
 
         ctx: Context = await self.get_context(message, cls=Context)
 
-        req_help_cmd: Optional[commands.Command] = ctx.is_requested_help()
+        req_help_cmd = ctx.is_requested_help()
         if req_help_cmd:
             # Если в конце "?" на поиск help команды то выводим его
             help_command: HelpCommand = self.help_command.copy()
             help_command.context = ctx
-            await help_command.command_callback(ctx, command=ctx.message.content[len(ctx.prefix):-2])
+            invoked_command_name = ctx.message.content[len(ctx.prefix):-2]
+            await help_command.prepare_help_command(ctx, command=invoked_command_name)
+            await help_command.command_callback(ctx, command=invoked_command_name)
 
         else:
             # В случае отправки help мы вызываем функцию
@@ -643,21 +645,21 @@ class Context(commands.Context):
 
         return await self.send_help(self.invoked_with)
 
-    def is_requested_help(self) -> Optional[commands.Command]:
+    def is_requested_help(self) -> bool:
         """ Был ли в команде запрошен help с помощью '?' в конце команды? """
         split = self.message.content.split()
-        result = None
+        result = False
         parent: Optional[Union[commands.Command, commands.Group]] = self.command
         for i in range(1, len(split)):
             if isinstance(parent, commands.Command) and split[i] == "?":
-                result = parent
+                result = True
                 parent = None
                 continue
             elif isinstance(parent, commands.Group):
                 parent = parent.get_command(split[i])
             else:
                 parent = None
-            result = None
+            result = False
 
         return result
 

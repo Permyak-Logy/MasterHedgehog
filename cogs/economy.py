@@ -553,7 +553,7 @@ class EconomyCog(Cog, name='Экономика'):
     @commands.guild_only()
     async def cmd_bal_dep(self, ctx: Context, value: int = None):
         """
-        Кладёт деньги в банк (Если value ек указан то всё)
+        Кладёт деньги в банк (Если value не указан, то вся сумма)
         """
         with db_session.create_session() as session:
             config = self.get_config(session, ctx.guild)
@@ -584,7 +584,7 @@ class EconomyCog(Cog, name='Экономика'):
     @commands.guild_only()
     async def cmd_bal_cash(self, ctx: Context, value: int = None):
         """
-        Снимает деньги с банка (Если value не указан то всё)
+        Снимает деньги с банка (Если value не указан, то вся сумма)
         """
         with db_session.create_session() as session:
             config = self.get_config(session, ctx.guild)
