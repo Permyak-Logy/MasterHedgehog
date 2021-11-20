@@ -54,7 +54,7 @@ class InfoCog(Cog, name="Информация"):
             embed.set_footer(text="PyPLy ©", icon_url=owner.avatar_url)
             embed.add_field(name="Мой разработчик", value=f"{owner}")
             embed.set_image(
-                url="https://cdn.discordapp.com/attachments/832900181534965810/903237957362778152/PyPLy.png")
+                url="https://cdn.discordapp.com/attachments/653543360161644545/911597130412593162/Master_.png")
         await asyncio.sleep(1.5)
         await ctx.send(embed=embed)
 
