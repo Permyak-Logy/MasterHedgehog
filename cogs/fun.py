@@ -12,7 +12,8 @@ from PLyBot.const import TEXT_EMOJI_NUMBERS
 from db_session.base import Message
 
 try:
-    swift = __import__('other', fromlist=['swift'])
+    from other import swift
+    # swift = __import__('other', fromlist=['swift'])
 except ImportError:
     swift = object()
     setattr(swift, 'words', [])
@@ -47,7 +48,7 @@ class FunCog(Cog, name="Веселье"):
         await ctx.reply(embed=discord.Embed(description=f"Готово! Обновлено сообщений {count}"))
 
     @commands.command(name="слово", aliases=["word", "w", "бред"])
-    @commands.cooldown(1, 0.5 * 60, type=commands.BucketType.guild)
+    @commands.cooldown(1, 0.1 * 60, type=commands.BucketType.guild)
     @commands.guild_only()
     async def word(self, ctx: Context, word: str = None, level: int = 2):
         """
