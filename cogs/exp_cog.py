@@ -17,11 +17,11 @@ class ExpCog(Cog):
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=ConfigCog)
 
-    # @commands.group(invoke_without_command=True)
-    # async def group1(self, ctx: Context, *, args):
-    #     await ctx.reply('Использована команда group1 ' + args)
+    @commands.group()
+    async def group1(self, ctx: Context, *, args):
+        await ctx.reply('Использована команда group1 ' + args)
 
-    @commands.command()
+    @group1.command()
     async def cmd(self, ctx: Context):
         await ctx.reply('Использована команда cmd')
 

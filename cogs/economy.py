@@ -128,8 +128,13 @@ class EconomyCog(Cog, name='Экономика'):
     def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[EconomyConfig]:
         return super().get_config(session, guild)
 
+    @staticmethod
+    def random(chance: float) -> bool:
+        assert 0 <= chance <= 1, "Шанс в пределах [0; 1]"
+        return (chance or -1) >= random.random()
+
     @commands.Cog.listener('on_ready')
-    async def update_features_and_balance_members(self):
+    async def listener_update_members(self):
         with db_session.create_session() as session:
             for member in self.bot.get_all_members():
                 DBEconomyTools.update_features_member(session, member)
@@ -138,31 +143,7 @@ class EconomyCog(Cog, name='Экономика'):
                 DBEconomyTools.update_balance_member(session, member)
             session.commit()
 
-    @commands.Cog.listener('on_member_join')
-    async def on_member_join(self, member: discord.Member):
-        with db_session.create_session() as session:
-            DBEconomyTools.update_balance_member(session, member)
-            session.commit()
-
-    @commands.Cog.listener('on_member_remove')
-    async def on_member_remove(self, member: discord.Member):
-        with db_session.create_session() as session:
-            if DBEconomyTools.get_balance_member(session, member):
-                DBEconomyTools.delete_balance_member(session, member)
-                session.commit()
-
-    @staticmethod
-    def random(chance: float) -> bool:
-        assert 0 <= chance <= 1, "Шанс в пределах [0; 1]"
-        return (chance or -1) >= random.random()
-
-    @staticmethod
-    def get_chance_steal_bank(total: int, count: int) -> float:
-        if count == 0 or total <= 0 or total / count <= 1:
-            return 0
-        return math.log10(total / count) ** -1
-
-    # Работа
+    # =======================================================================================================
     async def do_work(self, ctx: commands.Context, data: dict, chance=1., title="Работа окончена"):
         with db_session.create_session() as session:
             config: EconomyConfig = self.get_config(session, guild=ctx.guild)
@@ -179,10 +160,15 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
             await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.group('work', aliases=['работа'])
+    async def group_work(self, ctx: Context):
+        """Команда для работы"""
+        await ctx.just_send_help()
+
+    @group_work.command('off')
     @commands.guild_only()
     @commands.cooldown(1, 1 * 60 * 60, type=commands.BucketType.user)
-    async def work(self, ctx: Context):
+    async def cmd_work_official(self, ctx: Context):
         """
         -Простая работа без всяких рисков, зарабатываете и не бойтесь за свои деньги.
         -Минимальный заработок: 100 ; Максимальный  заработок 2000 ; Отдых от работы 6 часов
@@ -210,10 +196,10 @@ class EconomyCog(Cog, name='Экономика'):
         }
         await self.do_work(ctx, d)
 
-    @commands.command()
+    @group_work.command('slut')
     @commands.guild_only()
     @commands.cooldown(1, 1 * 60 * 60, type=commands.BucketType.user)
-    async def slut(self, ctx: Context):
+    async def cmd_work_slut(self, ctx: Context):
         """
         -Работа, отчасти связана с криминалом. Вы - ночная бабочка, работаете, чтобы удовлетворять
         людей и получать за это деньги. Учтите, что у этой работы есть свои риски;
@@ -245,10 +231,10 @@ class EconomyCog(Cog, name='Экономика'):
         }
         await self.do_work(ctx, d, chance=0.45, title="Вылазка окончена!")
 
-    @commands.command()
+    @group_work.command('crime')
     @commands.guild_only()
     @commands.cooldown(1, 1 * 60 * 60, type=commands.BucketType.user)
-    async def crime(self, ctx: Context):
+    async def cmd_work_crime(self, ctx: Context):
         """
         -Работа полностью связана с криминалом, вы погружаетесь в азартный и рискованный мир,
         где очень большой шанс потерять все деньги, но не менее плохой шанс сорвать куш.
@@ -295,9 +281,51 @@ class EconomyCog(Cog, name='Экономика'):
 
         await self.do_work(ctx, d, chance=0.2, title="Вылазка окончена!")
 
-    @commands.command()
+    @group_work.command('business')
     @commands.guild_only()
-    async def steal(self, ctx: Context, member: discord.Member = None):
+    @commands.cooldown(1, 12 * 60 * 60, type=BucketType.user)
+    async def cmd_work_business(self, ctx: Context):
+        """
+        -Работа полностью связана с Бизнесом, Тебе придется покупать акции, придумывать новое,
+        терять деньги, входить в банкротство. Тебе придется столкнутся с
+        проблемами каждых бизнесменов, терять деньги и зарабатывать миллионы.
+        Риск: 80%, вы рискуете потерять часть денег.
+        Минимальный риск: -10к ; Максимальный -1 млн
+        -Минимальный заработок: 10к ; Максимальный 1 млрд ; Отдых от работы 12 ч
+        """
+
+        d = {
+            False: (random.choice([
+                "Ты решил купить акции Tesla, но обвал рынка привел вас к банкротству и вы потеряли",
+
+                "Ты создал умные ведра для мусора, но ведра начали ломается от попадания в них воды",
+
+                "Ты решил создать Кафе, но из - за рабочих оно было закрыто",
+
+                "Ты начал скупать продукты в магазине чтобы их продать, но они пропали"
+            ]), -int(10000 + ((1000000 - 10000) * ((random.random() / 100) ** 1.8))),
+                    discord.colour.Color.from_rgb(255, 0, 0)),
+
+            True: (random.choice([
+                "Ты придумал носки с GPS и идея Выстрелила! Тысячи мужиков их купило, ты получаешь",
+
+                "Ты начал мыслить масштабно, создал ларек и начал торговать. "
+                "Акции росли, Деньги пошли верх, ты начал получать больше, появилось больше филиалов"
+                " и ты стал самым богатым человеком в твоём роду за всю историю!",
+
+                "Ты купил самолет и продал его дороже потом еще, потом еще больше, и у тебя авиакомпания",
+
+                "Вы со своими друзьями решили стать брокерами, торговали акциями, ваши кошельки росли,"
+                " в итоге вы на-продали акций и заработали на этом"
+            ]), int(10000 + ((1000000000 - 10000) * ((random.random() / 100) ** 1.8))),
+                   discord.colour.Color.from_rgb(0, 255, 0))
+        }
+
+        await self.do_work(ctx, d, chance=0.2, title="Создание бизнеса окончено!")
+
+    @commands.command('steal')
+    @commands.guild_only()
+    async def cmd_steal(self, ctx: Context, member: discord.Member = None):
         """
         Попытаться ограбить кошелёк у другого участника.
         Если провал то вы заплатите компенсацию (0-100% Денег оппонента)
@@ -332,9 +360,9 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
             await ctx.send(embed=discord.Embed(**embed_data))
 
-    @commands.command()
+    @commands.command('casino')
     @commands.guild_only()
-    async def casino(self, ctx: Context, rate: str, money: int):
+    async def cmd_casino(self, ctx: Context, rate: str, money: int):
         """
         Казино, ставте ваши деньги и ставку. Размер выигрыша обратно пропорционален ставке
         (чем меньше шанс выигрыша, тем больше сам выигрыш)
@@ -399,83 +427,16 @@ class EconomyCog(Cog, name='Экономика'):
 
         await ctx.reply(embed=embed)
 
-    # @commands.command()
+    # =======================================================================================================
+    @staticmethod
+    def get_chance_steal_bank(total: int, count: int) -> float:
+        if count == 0 or total <= 0 or total / count <= 1:
+            return 0
+        return math.log10(total / count) ** -1
+
+    @commands.group('bank')
     @commands.guild_only()
-    @commands.cooldown(1, 12 * 60 * 60, type=BucketType.user)
-    async def business(self, ctx: Context):
-        """
-        -Работа полностью связана с Бизнесом, Тебе придется покупать акции, придумывать новое,
-        терять деньги, входить в банкротство. Тебе придется столкнутся с
-        проблемами каждых бизнесменов, терять деньги и зарабатывать миллионы.
-        Риск: 80%, вы рискуете потерять часть денег.
-        Минимальный риск: -10к ; Максимальный -1 млн
-        -Минимальный заработок: 10к ; Максимальный 1 млрд ; Отдых от работы 12 ч
-        """
-
-        d = {
-            False: (random.choice([
-                "Ты решил купить акции Tesla, но обвал рынка привел вас к банкротству и вы потеряли",
-
-                "Ты создал умные ведра для мусора, но ведра начали ломается от попадания в них воды",
-
-                "Ты решил создать Кафе, но из - за рабочих оно было закрыто",
-
-                "Ты начал скупать продукты в магазине чтобы их продать, но они пропали"
-            ]), -int(10000 + ((1000000 - 10000) * ((random.random() / 100) ** 1.8))),
-                    discord.colour.Color.from_rgb(255, 0, 0)),
-
-            True: (random.choice([
-                "Ты придумал носки с GPS и идея Выстрелила! Тысячи мужиков их купило, ты получаешь",
-
-                "Ты начал мыслить масштабно, создал ларек и начал торговать. "
-                "Акции росли, Деньги пошли верх, ты начал получать больше, появилось больше филиалов"
-                " и ты стал самым богатым человеком в твоём роду за всю историю!",
-
-                "Ты купил самолет и продал его дороже потом еще, потом еще больше, и у тебя авиакомпания",
-
-                "Вы со своими друзьями решили стать брокерами, торговали акциями, ваши кошельки росли,"
-                " в итоге вы на-продали акций и заработали на этом"
-            ]), int(10000 + ((1000000000 - 10000) * ((random.random() / 100) ** 1.8))),
-                   discord.colour.Color.from_rgb(0, 255, 0))
-        }
-
-        await self.do_work(ctx, d, chance=0.2, title="Создание бизнеса окончено!")
-
-    # @commands.command()
-    @commands.guild_only()
-    async def help_economy(self, ctx: Context):
-        """
-        Показывает информацию о работах на сервере
-        """
-        with db_session.create_session() as session:
-            config = self.get_config(session, ctx.guild)
-
-            embed = discord.Embed()
-            embed.title = "Экономическая система \"Г.Р.И.Б\""
-            embed.description = (
-                "```python\n"
-                "   Мы находимся в криминальном городе, вокруг воровство, обман, насилие. "
-
-                "Никому нельзя доверять, рассчитывай только на себя.\n"
-                "Работай, воруй, грабь банки, делай все, чтобы выйти победителем и получить славу. "
-                "Этому городу нужна новая легенда, возможно, это будешь ты!\n\n"
-                f"Город: {ctx.guild.name}\n"
-                f"Валюта города: {config.currency_name}\n\n"
-                f"Мэр - {ctx.guild.owner.display_name}\n"
-                "Ваша роль - Гражданин```"
-            )
-            embed.add_field(name=ctx.prefix + self.bot.get_command('help_jobs').name,
-                            value="Узнать о способах заработка")
-            await ctx.send(embed=embed)
-
-    # @commands.command()
-    @commands.guild_only()
-    async def help_jobs(self, ctx: Context):
-        pass
-
-    @commands.command()
-    @commands.guild_only()
-    async def check_bank(self, ctx: Context):
+    async def group_bank(self, ctx: Context):
         """
         Показывает сколько денег в банке.
         """
@@ -496,10 +457,10 @@ class EconomyCog(Cog, name='Экономика'):
                             value=str(round(math.log10((total or 2) / (count or 1)) ** -1 * 100, 2)) + "%")
             await ctx.send(embed=embed)
 
-    @commands.command()
+    @group_bank.command('rob')
     @commands.guild_only()
     @commands.is_owner()
-    async def rob_bank(self, ctx: Context, count: int):
+    async def cmd_bank_rob(self, ctx: Context, count: int):
         """
         Позволяет ограбить банк ограбив указанное кол-во ячеек (чем больше ячеек тем меньше шанс на успех).
         Чем больше средний показатель денег в непустых ячейках тем больше шанс ограбления.
@@ -538,10 +499,59 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
             await ctx.reply(embed=embed)
 
-    # Взаимодействие со счётом
-    @commands.command()
+    # =======================================================================================================
+    async def change_bal(self, member: discord.Member, value: int, a: int, where) -> discord.Embed:
+        assert value >= 0, "Value должно быть >= 0"
+        assert where in ["dep", "cash"], "where принимает значения только 'dep' и 'cash'"
+        with db_session.create_session() as session:
+            a //= abs(a)
+
+            config = self.get_config(session, member.guild)
+            member_data = DBEconomyTools.get_balance_member(session, member)
+
+            embed = discord.Embed(
+                title="Изменение баланса",
+                description=f"{'Зачислено' if a > 0 else 'Снято'} {HRF.number(value)} {config.currency_name}"
+            )
+            embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+            embed.add_field(name="Было", value=f"{HRF.number(member_data.get_total())} "
+                                               f"{config.currency_icon}")
+            if where == 'dep':
+                member_data.add_dep(value * a)
+            else:
+                member_data.add_cash(value * a)
+
+            embed.add_field(name="Стало",
+                            value=f"{HRF.number(member_data.get_total())} {config.currency_icon}")
+            session.commit()
+            return embed
+
+    @commands.group('bal')
     @commands.guild_only()
-    async def dep(self, ctx: Context, value: int = None):
+    async def group_balance(self, ctx: Context, member: discord.Member = None):
+        """
+        Показывает свой баланс (участника если указан member)
+        """
+
+        with db_session.create_session() as session:
+            member = ctx.author if member is None else member
+            data = DBEconomyTools.get_balance_member(session, member)
+            config = self.get_config(session, ctx.guild)
+
+            embed = discord.Embed(
+                title=f"Баланс (в {config.currency_name})"
+            )
+
+            embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+            embed.add_field(name="Кошелёк", value=f"{HRF.number(data.cash)} {config.currency_icon}")
+            embed.add_field(name="Банк", value=f"{HRF.number(data.dep)} {config.currency_icon}")
+            embed.add_field(name="Всего", value=f"{HRF.number(data.get_total())} {config.currency_icon}")
+            await ctx.send(embed=embed)
+
+    # Взаимодействие со счётом
+    @group_balance.command('dep')
+    @commands.guild_only()
+    async def cmd_bal_dep(self, ctx: Context, value: int = None):
         """
         Кладёт деньги в банк (Если value ек указан то всё)
         """
@@ -570,9 +580,9 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
             await ctx.send(embed=embed)
 
-    @commands.command()
+    @group_balance.command('cash')
     @commands.guild_only()
-    async def cash(self, ctx: Context, value: int = None):
+    async def cmd_bal_cash(self, ctx: Context, value: int = None):
         """
         Снимает деньги с банка (Если value не указан то всё)
         """
@@ -601,31 +611,54 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @group_balance.command('add')
     @commands.guild_only()
-    async def bal(self, ctx: Context, member: discord.Member = None):
+    @commands.has_permissions(administrator=True)
+    async def cmd_bal_add(self, ctx: Context, member: discord.Member, value: int, where: str = None):
         """
-        Показывает свой баланс (участника если указан member)
+        Кладёт указанное кол-во денег на счёт участника (по умолчанию в dep)
         """
+        await ctx.send(embed=await self.change_bal(member, value, 1, where or "dep"))
 
+    @group_balance.command('remove')
+    @commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    async def cmd_bal_remove(self, ctx: Context, member: discord.Member, value: int, where: str = None):
+        """
+        Снимает указанное кол-во денег со счёта участника (по умолчанию в dep)
+        """
+        await ctx.send(embed=await self.change_bal(member, value, -1, where or "dep"))
+
+    @group_balance.command('set')
+    @commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    async def cmd_bal_set(self, ctx: Context, member: discord.Member, value: int, where: str = None):
+        """
+        Устанавливает указанное кол-во денег на счету участника (по умолчанию в dep)
+        """
+        where = where or "dep"
+        assert where in ["dep", "cash"], "where принимает значения только 'dep' и 'cash'"
         with db_session.create_session() as session:
-            member = ctx.author if member is None else member
-            data = DBEconomyTools.get_balance_member(session, member)
             config = self.get_config(session, ctx.guild)
+            member_data = DBEconomyTools.get_balance_member(session, member)
 
+            if where == 'dep':
+                member_data.set_dep(value)
+            else:
+                member_data.set_cash(value)
             embed = discord.Embed(
-                title=f"Баланс (в {config.currency_name})"
+                title="Изменение баланса",
+                description=f"Установлен баланс в {where} "
+                            f"{HRF.number(member_data.cash if where == 'cash' else member_data.dep)} "
+                            f"{config.currency_name}"
             )
-
             embed.set_author(name=member.display_name, icon_url=member.avatar_url)
-            embed.add_field(name="Кошелёк", value=f"{HRF.number(data.cash)} {config.currency_icon}")
-            embed.add_field(name="Банк", value=f"{HRF.number(data.dep)} {config.currency_icon}")
-            embed.add_field(name="Всего", value=f"{HRF.number(data.get_total())} {config.currency_icon}")
+            session.commit()
             await ctx.send(embed=embed)
 
-    @commands.command()
+    @group_balance.command('visa')
     @commands.guild_only()
-    async def visa(self, ctx: Context, member: discord.Member, value: int):
+    async def cmd_bal_visa(self, ctx: Context, member: discord.Member, value: int):
         """
         Переводит деньги из банка другому участнику в банк с комиссией в 5%
         """
@@ -657,6 +690,20 @@ class EconomyCog(Cog, name='Экономика'):
                             inline=False)
             await ctx.reply(embed=embed)
 
+    @commands.Cog.listener('on_member_join')
+    async def listener_auto_add_balance_member(self, member: discord.Member):
+        with db_session.create_session() as session:
+            DBEconomyTools.update_balance_member(session, member)
+            session.commit()
+
+    @commands.Cog.listener('on_member_remove')
+    async def listener_auto_remove_balance_member(self, member: discord.Member):
+        with db_session.create_session() as session:
+            if DBEconomyTools.get_balance_member(session, member):
+                DBEconomyTools.delete_balance_member(session, member)
+                session.commit()
+
+    # =======================================================================================================
     @commands.command()
     @commands.guild_only()
     async def leader_board(self, ctx: Context):
@@ -714,10 +761,10 @@ class EconomyCog(Cog, name='Экономика'):
 
             await ctx.send(embed=embed)
 
-    # Магазин
-    @commands.command()
+    # =======================================================================================================
+    @commands.group('shop')
     @commands.guild_only()
-    async def shop(self, ctx: Context, page=1):
+    async def group_shop(self, ctx: Context, page=1):
         """
         Показывает магазин сервера (Page - страница магазина)
         """
@@ -751,9 +798,9 @@ class EconomyCog(Cog, name='Экономика'):
                 pass
             await ctx.send(embed=embed)
 
-    @commands.command()
+    @group_shop.command()
     @commands.guild_only()
-    async def buy(self, ctx: Context, item_id: int):
+    async def cmd_shop_buy(self, ctx: Context, item_id: int):
         """
         Покупает предмет из магазина с указанным id
         """
@@ -779,11 +826,11 @@ class EconomyCog(Cog, name='Экономика'):
                 await ctx.send(embed=discord.Embed(title="Успешно!", description="Роль добавлена в ваш инвентарь",
                                                    colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
-    @commands.command()
+    @group_shop.command()
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def add_item(self, ctx: Context, role: discord.Role, price: int, *description):
+    async def cmd_shop_add_item(self, ctx: Context, role: discord.Role, price: int, *description):
         """
         Добавляет предмет в магазин
         """
@@ -800,7 +847,7 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.send(embed=discord.Embed(title="Успешно!", description="Предмет добавлен в магазин",
                                                colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
-    @commands.command()
+    @group_shop.command()
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
@@ -825,7 +872,7 @@ class EconomyCog(Cog, name='Экономика'):
                                                                                  f"из магазина",
                                                    colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
-    # Валюта
+    # =======================================================================================================
     @commands.command()
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
@@ -841,83 +888,19 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.send(
                 embed=discord.Embed(title="Изменена валюта", description=f"Изменена валюта на {icon} {name}"))
 
-    # Счёт участников
-    async def change_bal(self, member: discord.Member, value: int, a: int, where) -> discord.Embed:
-        assert value >= 0, "Value должно быть >= 0"
-        assert where in ["dep", "cash"], "where принимает значения только 'dep' и 'cash'"
-        with db_session.create_session() as session:
-            a //= abs(a)
-
-            config = self.get_config(session, member.guild)
-            member_data = DBEconomyTools.get_balance_member(session, member)
-
-            embed = discord.Embed(
-                title="Изменение баланса",
-                description=f"{'Зачислено' if a > 0 else 'Снято'} {HRF.number(value)} {config.currency_name}"
-            )
-            embed.set_author(name=member.display_name, icon_url=member.avatar_url)
-            embed.add_field(name="Было", value=f"{HRF.number(member_data.get_total())} "
-                                               f"{config.currency_icon}")
-            if where == 'dep':
-                member_data.add_dep(value * a)
-            else:
-                member_data.add_cash(value * a)
-
-            embed.add_field(name="Стало",
-                            value=f"{HRF.number(member_data.get_total())} {config.currency_icon}")
-            session.commit()
-            return embed
-
-    @commands.command()
+    # =======================================================================================================
+    @commands.group('luck_box')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def add_bal(self, ctx: Context, member: discord.Member, value: int, where: str = None):
-        """
-        Кладёт указанное кол-во денег на счёт участника (по умолчанию в dep)
-        """
-        await ctx.send(embed=await self.change_bal(member, value, 1, where or "dep"))
+    async def group_luck_box(self, ctx: Context):
+        """Коробки удачи"""
+        # TODO: Заглушка
+        await ctx.just_send_help()
 
-    @commands.command()
+    @group_luck_box.command('set')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def remove_bal(self, ctx: Context, member: discord.Member, value: int, where: str = None):
-        """
-        Снимает указанное кол-во денег со счёта участника (по умолчанию в dep)
-        """
-        await ctx.send(embed=await self.change_bal(member, value, -1, where or "dep"))
-
-    @commands.command()
-    @commands.guild_only()
-    @commands.has_permissions(administrator=True)
-    async def set_bal(self, ctx: Context, member: discord.Member, value: int, where: str = None):
-        """
-        Устанавливает указанное кол-во денег на счету участника (по умолчанию в dep)
-        """
-        where = where or "dep"
-        assert where in ["dep", "cash"], "where принимает значения только 'dep' и 'cash'"
-        with db_session.create_session() as session:
-            config = self.get_config(session, ctx.guild)
-            member_data = DBEconomyTools.get_balance_member(session, member)
-
-            if where == 'dep':
-                member_data.set_dep(value)
-            else:
-                member_data.set_cash(value)
-            embed = discord.Embed(
-                title="Изменение баланса",
-                description=f"Установлен баланс в {where} "
-                            f"{HRF.number(member_data.cash if where == 'cash' else member_data.dep)} "
-                            f"{config.currency_name}"
-            )
-            embed.set_author(name=member.display_name, icon_url=member.avatar_url)
-            session.commit()
-            await ctx.send(embed=embed)
-
-    # Коробки удачи
-    @commands.command()
-    @commands.guild_only()
-    @commands.has_permissions(administrator=True)
-    async def set_luck_box(self, ctx: Context, name: str, desc: str, prices: str, image: str, *lots: str):
+    async def cmd_luck_box_set(self, ctx: Context, name: str, desc: str, prices: str, image: str, *lots: str):
         class Lot:
             def __init__(self, data):
                 _name, _role_id, _chance = data.split(';')
@@ -960,7 +943,7 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.message.delete()
 
     @commands.Cog.listener('on_raw_reaction_add')
-    async def buy_luck_box(self, payload: discord.RawReactionActionEvent):
+    async def listener_buy_luck_box(self, payload: discord.RawReactionActionEvent):
         if payload.emoji.name not in EMOJI_NUMBERS.values():
             return
         if payload.member == self.bot.user:
@@ -1020,54 +1003,17 @@ class EconomyCog(Cog, name='Экономика'):
                 await channel.send(embed=embed)
 
     @commands.Cog.listener('on_raw_message_delete')
-    async def delete_luck_box(self, payload: discord.RawMessageDeleteEvent):
+    async def listener_delete_luck_box(self, payload: discord.RawMessageDeleteEvent):
         with db_session.create_session() as session:
             box = session.query(LuckBox).filter(LuckBox.ctrl_msg == payload.message_id).first()
             if box:
                 session.delete(box)
                 session.commit()
 
-    # Промокоды
-    @commands.command()
+    # =======================================================================================================
+    @commands.group('promo')
     @commands.guild_only()
-    @commands.has_permissions(administrator=True)
-    async def create_promo(self, ctx: Context, moneys: int):
-        """
-        Создаёт промокод на указанную сумму денег
-        """
-        with db_session.create_session() as session:
-            config = self.get_config(session, ctx.guild)
-            code = PromoCode()
-            code.config_id = config.guild_id
-            code.code = "".join(chr(random.randint(ord("A"), ord("Z"))) for _ in range(10))
-            code.moneys = bigint(moneys)
-            session.add(code)
-            session.commit()
-            await ctx.send(embed=discord.Embed(title="Промокод").add_field(
-                name="Код", value=f"`{code.code}`").add_field(
-                name="Сумма", value=HRF.number(code.moneys) + ' ' + config.currency_icon
-            ))
-
-    @commands.command()
-    @commands.guild_only()
-    @commands.has_permissions(administrator=True)
-    async def list_promo(self, ctx: Context):
-        """
-        Показывает промокоды сервера
-        """
-
-        with db_session.create_session() as session:
-            config = self.get_config(session, ctx.guild)
-            codes = session.query(PromoCode).filter(PromoCode.config_id == config.guild_id,
-                                                    PromoCode.activated == False).all()
-            await ctx.send(embed=discord.Embed(
-                title=f"Промокоды {ctx.guild.name}",
-                description="\n".join(f"`{code.code}` - {HRF.number(code.moneys)} {config.currency_icon}"
-                                      for code in codes)))
-
-    @commands.command()
-    @commands.guild_only()
-    async def promo(self, ctx: Context, code: str):
+    async def group_promo(self, ctx: Context, code: str):
         """
         Активирует промокод
         """
@@ -1087,6 +1033,71 @@ class EconomyCog(Cog, name='Экономика'):
 
             await ctx.reply(embed=discord.Embed(title="Активирован промокод").add_field(
                 name="Начислено", value=HRF.number(code.moneys) + " " + config.currency_icon))
+
+    @group_promo.command('create')
+    @commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    async def cmd_promo_create(self, ctx: Context, moneys: int):
+        """
+        Создаёт промокод на указанную сумму денег
+        """
+        with db_session.create_session() as session:
+            config = self.get_config(session, ctx.guild)
+            code = PromoCode()
+            code.config_id = config.guild_id
+            code.code = "".join(chr(random.randint(ord("A"), ord("Z"))) for _ in range(10))
+            code.moneys = bigint(moneys)
+            session.add(code)
+            session.commit()
+            await ctx.send(embed=discord.Embed(title="Промокод").add_field(
+                name="Код", value=f"`{code.code}`").add_field(
+                name="Сумма", value=HRF.number(code.moneys) + ' ' + config.currency_icon
+            ))
+
+    @group_promo.command('list')
+    @commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    async def cmd_promo_list(self, ctx: Context):
+        """
+        Показывает промокоды сервера
+        """
+
+        with db_session.create_session() as session:
+            config = self.get_config(session, ctx.guild)
+            codes = session.query(PromoCode).filter(PromoCode.config_id == config.guild_id,
+                                                    PromoCode.activated == False).all()
+            await ctx.send(embed=discord.Embed(
+                title=f"Промокоды {ctx.guild.name}",
+                description="\n".join(f"`{code.code}` - {HRF.number(code.moneys)} {config.currency_icon}"
+                                      for code in codes)))
+
+    # =======================================================================================================
+    @commands.command('help_economy')
+    @commands.guild_only()
+    async def cmd_help_economy(self, ctx: Context):
+        """
+        Показывает информацию о работах на сервере
+        """
+        with db_session.create_session() as session:
+            config = self.get_config(session, ctx.guild)
+
+            embed = discord.Embed()
+            embed.title = "Экономическая система \"Г.Р.И.Б\""
+            embed.description = (
+                "```python\n"
+                "   Мы находимся в криминальном городе, вокруг воровство, обман, насилие. "
+
+                "Никому нельзя доверять, рассчитывай только на себя.\n"
+                "Работай, воруй, грабь банки, делай все, чтобы выйти победителем и получить славу. "
+                "Этому городу нужна новая легенда, возможно, это будешь ты!\n\n"
+                f"Город: {ctx.guild.name}\n"
+                f"Валюта города: {config.currency_name}\n\n"
+                f"Мэр - {ctx.guild.owner.display_name}\n"
+                "Ваша роль - Гражданин```"
+            )
+            embed.add_field(name=ctx.prefix + self.bot.get_command('work').name,
+                            value="Узнать о способах заработка")
+            await ctx.send(embed=embed)
 
 
 class DBEconomyTools:

@@ -37,12 +37,16 @@ class BaseConfigMix:
             raise AttributeError("У меня нет возможности представлять доступы")
 
     async def check_access(self, ctx: commands.Context) -> bool:
+        print('check', ctx.command)
         try:
             access = self.get_access()
+
         except AttributeError:
+            print('no access')
             return True
         try:
-            access_cmd = access[str(ctx.command)]
+            # TODO: Сделать для каждой команды свои настройки допуска
+            access_cmd = access[str(str(ctx.command).split()[0])]
         except KeyError as E:
             logging.warning(f"Не удалось получить данные о доступах к команде ({E.__class__.__name__}: {E})")
             return True
