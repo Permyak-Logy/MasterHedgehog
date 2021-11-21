@@ -134,7 +134,7 @@ class EconomyCog(Cog, name='Экономика'):
         return (chance or -1) >= random.random()
 
     @commands.Cog.listener('on_ready')
-    async def listener_update_members(self):
+    async def _listener_update_members(self):
         with db_session.create_session() as session:
             for member in self.bot.get_all_members():
                 DBEconomyTools.update_features_member(session, member)
@@ -161,14 +161,14 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.send(embed=embed)
 
     @commands.group('work', aliases=['работа'])
-    async def group_work(self, ctx: Context):
+    async def _group_work(self, ctx: Context):
         """Команда для работы"""
         await ctx.just_send_help()
 
-    @group_work.command('off')
+    @_group_work.command('off')
     @commands.guild_only()
     @commands.cooldown(1, 1 * 60 * 60, type=commands.BucketType.user)
-    async def cmd_work_official(self, ctx: Context):
+    async def _cmd_work_official(self, ctx: Context):
         """
         -Простая работа без всяких рисков, зарабатываете и не бойтесь за свои деньги.
         -Минимальный заработок: 100 ; Максимальный  заработок 2000 ; Отдых от работы 6 часов
@@ -196,10 +196,10 @@ class EconomyCog(Cog, name='Экономика'):
         }
         await self.do_work(ctx, d)
 
-    @group_work.command('slut')
+    @_group_work.command('slut')
     @commands.guild_only()
     @commands.cooldown(1, 1 * 60 * 60, type=commands.BucketType.user)
-    async def cmd_work_slut(self, ctx: Context):
+    async def _cmd_work_slut(self, ctx: Context):
         """
         -Работа, отчасти связана с криминалом. Вы - ночная бабочка, работаете, чтобы удовлетворять
         людей и получать за это деньги. Учтите, что у этой работы есть свои риски;
@@ -231,10 +231,10 @@ class EconomyCog(Cog, name='Экономика'):
         }
         await self.do_work(ctx, d, chance=0.45, title="Вылазка окончена!")
 
-    @group_work.command('crime')
+    @_group_work.command('crime')
     @commands.guild_only()
     @commands.cooldown(1, 1 * 60 * 60, type=commands.BucketType.user)
-    async def cmd_work_crime(self, ctx: Context):
+    async def _cmd_work_crime(self, ctx: Context):
         """
         -Работа полностью связана с криминалом, вы погружаетесь в азартный и рискованный мир,
         где очень большой шанс потерять все деньги, но не менее плохой шанс сорвать куш.
@@ -281,10 +281,10 @@ class EconomyCog(Cog, name='Экономика'):
 
         await self.do_work(ctx, d, chance=0.2, title="Вылазка окончена!")
 
-    @group_work.command('business')
+    @_group_work.command('business')
     @commands.guild_only()
     @commands.cooldown(1, 12 * 60 * 60, type=BucketType.user)
-    async def cmd_work_business(self, ctx: Context):
+    async def _cmd_work_business(self, ctx: Context):
         """
         -Работа полностью связана с Бизнесом, Тебе придется покупать акции, придумывать новое,
         терять деньги, входить в банкротство. Тебе придется столкнутся с
@@ -325,7 +325,7 @@ class EconomyCog(Cog, name='Экономика'):
 
     @commands.command('steal')
     @commands.guild_only()
-    async def cmd_steal(self, ctx: Context, member: discord.Member = None):
+    async def _cmd_steal(self, ctx: Context, member: discord.Member = None):
         """
         Попытаться ограбить кошелёк у другого участника.
         Если провал то вы заплатите компенсацию (0-100% Денег оппонента)
@@ -362,7 +362,7 @@ class EconomyCog(Cog, name='Экономика'):
 
     @commands.command('casino')
     @commands.guild_only()
-    async def cmd_casino(self, ctx: Context, rate: str, money: int):
+    async def _cmd_casino(self, ctx: Context, rate: str, money: int):
         """
         Казино, ставте ваши деньги и ставку. Размер выигрыша обратно пропорционален ставке
         (чем меньше шанс выигрыша, тем больше сам выигрыш)
@@ -436,7 +436,7 @@ class EconomyCog(Cog, name='Экономика'):
 
     @commands.group('bank')
     @commands.guild_only()
-    async def group_bank(self, ctx: Context):
+    async def _group_bank(self, ctx: Context):
         """
         Показывает сколько денег в банке.
         """
@@ -457,10 +457,10 @@ class EconomyCog(Cog, name='Экономика'):
                             value=str(round(math.log10((total or 2) / (count or 1)) ** -1 * 100, 2)) + "%")
             await ctx.send(embed=embed)
 
-    @group_bank.command('rob')
+    @_group_bank.command('rob')
     @commands.guild_only()
     @commands.is_owner()
-    async def cmd_bank_rob(self, ctx: Context, count: int):
+    async def _cmd_bank_rob(self, ctx: Context, count: int):
         """
         Позволяет ограбить банк ограбив указанное кол-во ячеек (чем больше ячеек тем меньше шанс на успех).
         Чем больше средний показатель денег в непустых ячейках тем больше шанс ограбления.
@@ -528,7 +528,7 @@ class EconomyCog(Cog, name='Экономика'):
 
     @commands.group('bal')
     @commands.guild_only()
-    async def group_balance(self, ctx: Context, member: discord.Member = None):
+    async def _group_balance(self, ctx: Context, member: discord.Member = None):
         """
         Показывает свой баланс (участника если указан member)
         """
@@ -549,9 +549,9 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.send(embed=embed)
 
     # Взаимодействие со счётом
-    @group_balance.command('dep')
+    @_group_balance.command('dep')
     @commands.guild_only()
-    async def cmd_bal_dep(self, ctx: Context, value: int = None):
+    async def _cmd_bal_dep(self, ctx: Context, value: int = None):
         """
         Кладёт деньги в банк (Если value не указан, то вся сумма)
         """
@@ -580,9 +580,9 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
             await ctx.send(embed=embed)
 
-    @group_balance.command('cash')
+    @_group_balance.command('cash')
     @commands.guild_only()
-    async def cmd_bal_cash(self, ctx: Context, value: int = None):
+    async def _cmd_bal_cash(self, ctx: Context, value: int = None):
         """
         Снимает деньги с банка (Если value не указан, то вся сумма)
         """
@@ -611,28 +611,28 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
         await ctx.send(embed=embed)
 
-    @group_balance.command('add')
+    @_group_balance.command('add')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def cmd_bal_add(self, ctx: Context, member: discord.Member, value: int, where: str = None):
+    async def _cmd_bal_add(self, ctx: Context, member: discord.Member, value: int, where: str = None):
         """
         Кладёт указанное кол-во денег на счёт участника (по умолчанию в dep)
         """
         await ctx.send(embed=await self.change_bal(member, value, 1, where or "dep"))
 
-    @group_balance.command('remove')
+    @_group_balance.command('remove')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def cmd_bal_remove(self, ctx: Context, member: discord.Member, value: int, where: str = None):
+    async def _cmd_bal_remove(self, ctx: Context, member: discord.Member, value: int, where: str = None):
         """
         Снимает указанное кол-во денег со счёта участника (по умолчанию в dep)
         """
         await ctx.send(embed=await self.change_bal(member, value, -1, where or "dep"))
 
-    @group_balance.command('set')
+    @_group_balance.command('set')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def cmd_bal_set(self, ctx: Context, member: discord.Member, value: int, where: str = None):
+    async def _cmd_bal_set(self, ctx: Context, member: discord.Member, value: int, where: str = None):
         """
         Устанавливает указанное кол-во денег на счету участника (по умолчанию в dep)
         """
@@ -656,9 +656,9 @@ class EconomyCog(Cog, name='Экономика'):
             session.commit()
             await ctx.send(embed=embed)
 
-    @group_balance.command('visa')
+    @_group_balance.command('visa')
     @commands.guild_only()
-    async def cmd_bal_visa(self, ctx: Context, member: discord.Member, value: int):
+    async def _cmd_bal_visa(self, ctx: Context, member: discord.Member, value: int):
         """
         Переводит деньги из банка другому участнику в банк с комиссией в 5%
         """
@@ -691,13 +691,13 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.reply(embed=embed)
 
     @commands.Cog.listener('on_member_join')
-    async def listener_auto_add_balance_member(self, member: discord.Member):
+    async def _listener_auto_add_balance_member(self, member: discord.Member):
         with db_session.create_session() as session:
             DBEconomyTools.update_balance_member(session, member)
             session.commit()
 
     @commands.Cog.listener('on_member_remove')
-    async def listener_auto_remove_balance_member(self, member: discord.Member):
+    async def _listener_auto_remove_balance_member(self, member: discord.Member):
         with db_session.create_session() as session:
             if DBEconomyTools.get_balance_member(session, member):
                 DBEconomyTools.delete_balance_member(session, member)
@@ -764,7 +764,7 @@ class EconomyCog(Cog, name='Экономика'):
     # =======================================================================================================
     @commands.group('shop')
     @commands.guild_only()
-    async def group_shop(self, ctx: Context, page=1):
+    async def _group_shop(self, ctx: Context, page=1):
         """
         Показывает магазин сервера (Page - страница магазина)
         """
@@ -798,9 +798,9 @@ class EconomyCog(Cog, name='Экономика'):
                 pass
             await ctx.send(embed=embed)
 
-    @group_shop.command()
+    @_group_shop.command()
     @commands.guild_only()
-    async def cmd_shop_buy(self, ctx: Context, item_id: int):
+    async def _cmd_shop_buy(self, ctx: Context, item_id: int):
         """
         Покупает предмет из магазина с указанным id
         """
@@ -826,11 +826,11 @@ class EconomyCog(Cog, name='Экономика'):
                 await ctx.send(embed=discord.Embed(title="Успешно!", description="Роль добавлена в ваш инвентарь",
                                                    colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
-    @group_shop.command()
+    @_group_shop.command()
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def cmd_shop_add_item(self, ctx: Context, role: discord.Role, price: int, *description):
+    async def _cmd_shop_add_item(self, ctx: Context, role: discord.Role, price: int, *description):
         """
         Добавляет предмет в магазин
         """
@@ -847,7 +847,7 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.send(embed=discord.Embed(title="Успешно!", description="Предмет добавлен в магазин",
                                                colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
-    @group_shop.command()
+    @_group_shop.command()
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
@@ -892,15 +892,15 @@ class EconomyCog(Cog, name='Экономика'):
     @commands.group('luck_box')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def group_luck_box(self, ctx: Context):
+    async def _group_luck_box(self, ctx: Context):
         """Коробки удачи"""
         # TODO: Заглушка
         await ctx.just_send_help()
 
-    @group_luck_box.command('set')
+    @_group_luck_box.command('set')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def cmd_luck_box_set(self, ctx: Context, name: str, desc: str, prices: str, image: str, *lots: str):
+    async def _cmd_luck_box_set(self, ctx: Context, name: str, desc: str, prices: str, image: str, *lots: str):
         class Lot:
             def __init__(self, data):
                 _name, _role_id, _chance = data.split(';')
@@ -943,7 +943,7 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.message.delete()
 
     @commands.Cog.listener('on_raw_reaction_add')
-    async def listener_buy_luck_box(self, payload: discord.RawReactionActionEvent):
+    async def _listener_buy_luck_box(self, payload: discord.RawReactionActionEvent):
         if payload.emoji.name not in EMOJI_NUMBERS.values():
             return
         if payload.member == self.bot.user:
@@ -1003,7 +1003,7 @@ class EconomyCog(Cog, name='Экономика'):
                 await channel.send(embed=embed)
 
     @commands.Cog.listener('on_raw_message_delete')
-    async def listener_delete_luck_box(self, payload: discord.RawMessageDeleteEvent):
+    async def _listener_delete_luck_box(self, payload: discord.RawMessageDeleteEvent):
         with db_session.create_session() as session:
             box = session.query(LuckBox).filter(LuckBox.ctrl_msg == payload.message_id).first()
             if box:
@@ -1013,7 +1013,7 @@ class EconomyCog(Cog, name='Экономика'):
     # =======================================================================================================
     @commands.group('promo')
     @commands.guild_only()
-    async def group_promo(self, ctx: Context, code: str):
+    async def _group_promo(self, ctx: Context, code: str):
         """
         Активирует промокод
         """
@@ -1034,10 +1034,10 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.reply(embed=discord.Embed(title="Активирован промокод").add_field(
                 name="Начислено", value=HRF.number(code.moneys) + " " + config.currency_icon))
 
-    @group_promo.command('create')
+    @_group_promo.command('create')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def cmd_promo_create(self, ctx: Context, moneys: int):
+    async def _cmd_promo_create(self, ctx: Context, moneys: int):
         """
         Создаёт промокод на указанную сумму денег
         """
@@ -1054,10 +1054,10 @@ class EconomyCog(Cog, name='Экономика'):
                 name="Сумма", value=HRF.number(code.moneys) + ' ' + config.currency_icon
             ))
 
-    @group_promo.command('list')
+    @_group_promo.command('list')
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def cmd_promo_list(self, ctx: Context):
+    async def _cmd_promo_list(self, ctx: Context):
         """
         Показывает промокоды сервера
         """
@@ -1074,7 +1074,7 @@ class EconomyCog(Cog, name='Экономика'):
     # =======================================================================================================
     @commands.command('help_economy')
     @commands.guild_only()
-    async def cmd_help_economy(self, ctx: Context):
+    async def _cmd_help_economy(self, ctx: Context):
         """
         Показывает информацию о работах на сервере
         """

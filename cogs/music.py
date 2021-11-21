@@ -65,15 +65,20 @@ class MusicConfig(SqlAlchemyBase, BaseConfigMix):
     active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
 
 
-class MusicCog(Cog):
+class MusicCog(Cog, name='Музыка YouTube'):
     # TODO: Сделать обновление плейера при завершении игры музыки
 
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=MusicConfig)
         self.__online_music_players = {}
 
-    @commands.command()
-    async def join(self, ctx: Context, *, channel: discord.VoiceChannel):
+    @commands.group('music')
+    async def _group_music(self, ctx: Context):
+        """Команды для управления музыкой"""
+        await ctx.just_send_help()
+
+    @_group_music.command('join')
+    async def _cmd_music_join(self, ctx: Context, *, channel: discord.VoiceChannel):
         """Joins a voice channel"""
 
         if ctx.voice_client is not None:
@@ -81,8 +86,8 @@ class MusicCog(Cog):
 
         await channel.connect()
 
-    @commands.command()
-    async def play(self, ctx: Context, *, url):
+    @_group_music.command('play')
+    async def _cmd_music_play(self, ctx: Context, *, url):
         """Streams from a url (same as yt, but doesn't pre download)"""
 
         if ctx.voice_client is None:
@@ -112,8 +117,8 @@ class MusicCog(Cog):
         await msg.add_reaction('🔊')
         self.__online_music_players[ctx.guild.id] = msg.id
 
-    @commands.command()
-    async def volume(self, ctx: Context, volume: int):
+    @_group_music.command('volume')
+    async def _cmd_music_volume(self, ctx: Context, volume: int):
         """Changes the player's volume"""
 
         if ctx.voice_client is None:
@@ -122,14 +127,14 @@ class MusicCog(Cog):
         ctx.voice_client.source.volume = volume / 100
         await ctx.send(f"Changed volume to {volume}%")
 
-    @commands.command()
-    async def stop(self, ctx: Context):
+    @_group_music.command('stop')
+    async def _cmd_music_stop(self, ctx: Context):
         """Stops and disconnects the bot from voice"""
 
         await ctx.voice_client.disconnect()
 
     @commands.Cog.listener('on_raw_reaction_add')
-    async def on_using_player(self, payload: discord.RawReactionActionEvent):
+    async def _listener_using_music_player(self, payload: discord.RawReactionActionEvent):
         if self.__online_music_players.get(payload.guild_id) != payload.message_id:
             return
 
@@ -152,15 +157,15 @@ class MusicCog(Cog):
             elif payload.emoji.name == '⏹️':
                 voice_client.stop()
             elif payload.emoji.name == '🔉':
-                voice_client.source.volume = max(0, voice_client.source.volume - 0.1)
+                voice_client.source.volume = max(0., voice_client.source.volume - 0.1)
             elif payload.emoji.name == '🔊':
-                voice_client.source.volume = min(1, voice_client.source.volume + 0.1)
+                voice_client.source.volume = min(1., voice_client.source.volume + 0.1)
             else:
                 return
 
-        await self.update_status_player(msg)
+        await self.update_status_music_player(msg)
 
-    async def update_status_player(self, message: discord.Message):
+    async def update_status_music_player(self, message: discord.Message):
         voice_client: discord.VoiceClient = message.guild.voice_client
         embed = message.embeds[0]
         embed.clear_fields()

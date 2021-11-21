@@ -1,7 +1,6 @@
 import inspect
 import itertools
 import re
-import typing
 
 import discord
 from discord.ext import commands
@@ -33,8 +32,8 @@ class HelpCommand(commands.MinimalHelpCommand):
             print(val.__class__)
         if self.hint_types:
             return "%s%s %s" % (self.clean_prefix,
-                            command.qualified_name,
-                            ' '.join(map(lambda data: f"<{data[0]}:{data[1]}>", annotations.items())))
+                                command.qualified_name,
+                                ' '.join(map(lambda data: f"<{data[0]}:{data[1]}>", annotations.items())))
         else:
             return "%s%s %s" % (self.clean_prefix,
                                 command.qualified_name,

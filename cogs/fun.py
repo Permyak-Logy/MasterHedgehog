@@ -25,10 +25,10 @@ class FunCog(Cog, name="Веселье"):
     def __init__(self, bot: Bot):
         super().__init__(bot)
 
-    @commands.command()
+    @commands.command('load_all_msgs')
     @commands.is_owner()
     @commands.guild_only()
-    async def load_all_msgs(self, ctx: Context):
+    async def _cmd_load_all_msgs(self, ctx: Context):
         count = 0
         async with ctx.typing():
             with db_session.create_session() as session:
@@ -49,7 +49,7 @@ class FunCog(Cog, name="Веселье"):
     @commands.command(name="слово", aliases=["word", "w", "бред"])
     @commands.cooldown(1, 0.5 * 60, type=commands.BucketType.guild)
     @commands.guild_only()
-    async def word(self, ctx: Context, word: str = None, level: int = 2):
+    async def _cmd_word(self, ctx: Context, word: str = None, level: int = 2):
         """
         Генератор бредовых предложений. Делает их из книги
         """
@@ -106,10 +106,10 @@ class FunCog(Cog, name="Веселье"):
 
             await ctx.send(' '.join(sentence))
 
-    @commands.command()
+    @commands.command('say')
     @commands.is_owner()
     @commands.guild_only()
-    async def say(self, ctx: Context, member: discord.Member, *, text: str):
+    async def _cmd_say(self, ctx: Context, member: discord.Member, *, text: str):
         engine = pyttsx3.init()
         filename = f"audio\\{ctx.guild.id}-{ctx.author.id}-{member.id}.mp3"
         engine.save_to_file(text, filename)
@@ -129,15 +129,15 @@ class FunCog(Cog, name="Веселье"):
         if os.path.isfile(filename):
             os.remove(filename)
 
-    @commands.command()
+    @commands.command('say_pc')
     @commands.is_owner()
-    async def say_pc(self, _: Context, *, text: str):
+    async def _cmd_say_pc(self, _: Context, *, text: str):
         engine = pyttsx3.init()
         engine.say(text)
         engine.runAndWait()
 
-    @commands.command()
-    async def sapper(self, ctx: Context, width: int = 9, height: int = 9, count: int = 10):
+    @commands.command('sapper', aliases=['сапёр'])
+    async def _cmd_sapper(self, ctx: Context, width: int = 9, height: int = 9, count: int = 10):
         """
         Отправляет текстовое сообщение для игры в сапёра
         """

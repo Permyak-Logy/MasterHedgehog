@@ -37,7 +37,7 @@ def main():
     )
 
     # noinspection SpellCheckingInspection
-    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warframe.py', 'APs.py']),
+    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warframe.py', 'APs.py', 'game_activity.py']),
                         os.listdir('cogs'))
     cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names)) + ['PLyBot.info', 'PLyBot.api']
     bot.load_all_extensions(cogs)

@@ -11,8 +11,8 @@ from PLyBot import Bot, Cog, join_string, HRF
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 
 
-class RafflesConfig(SqlAlchemyBase, BaseConfigMix):
-    __tablename__ = "raffles_configs"
+class LotteryConfig(SqlAlchemyBase, BaseConfigMix):
+    __tablename__ = "lottery_configs"
 
     guild_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('guilds.id'),
                                  primary_key=True, nullable=False)
@@ -21,18 +21,19 @@ class RafflesConfig(SqlAlchemyBase, BaseConfigMix):
 
 
 # TODO: Русифицировать команды и Сделать embed по цвету бота
-class RafflesCog(Cog, name="Розыгрыши"):
+class LotteryCog(Cog, name="Лотереи"):
     """
     Модуль для розыгрышей призов. В нём вы можете разыграть какую либо роль.
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=RafflesConfig)
+        super().__init__(bot, cls_config=LotteryConfig)
 
-    @commands.command('розыгрыш_денег', aliases=['add_raffle_moneys', 'raffle_moneys'])
+    # TODO: Заглушка
+    @commands.command('розыгрыш_денег', aliases=['add_lottery_moneys', 'lottery_moneys'], enabled=False)
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def add_raffle_moneys(self, ctx: commands.Context, moneys: int, seconds: int, *title: str):
+    async def _cmd_add_raffle_moneys(self, ctx: commands.Context, moneys: int, seconds: int, *title: str):
         """
         Создаёт розыгрыш на деньги (seconds в сек, title не обязательно указывать)
         (**!!ВНИМАНИЕ** Необходим доступный модуль 'Экономика')
@@ -136,11 +137,11 @@ class RafflesCog(Cog, name="Розыгрыши"):
         await message.delete()
 
     @commands.cooldown(1, 5)
-    @commands.command(name='розыгрыш', aliases=['add_raffle', 'raffle'])
+    @commands.command(name='лотерея', aliases=['add_lottery', 'lottery'])
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def raffle(self, ctx: commands.Context, role: discord.Role, seconds: int, *title: str):
+    async def _cmd_lottery(self, ctx: commands.Context, role: discord.Role, seconds: int, *title: str):
         """
         Создаёт розыгрыш на роль (seconds в сек, title не обязательно указывать)
         """
@@ -158,4 +159,4 @@ class RafflesCog(Cog, name="Розыгрыши"):
 
 
 def setup(bot: Bot):
-    bot.add_cog(RafflesCog(bot))
+    bot.add_cog(LotteryCog(bot))

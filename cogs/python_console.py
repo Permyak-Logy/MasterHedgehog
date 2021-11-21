@@ -40,8 +40,8 @@ class PythonConsoleCog(Cog, name='PyConsole'):
 
     @commands.command('eval', aliases=['ev'])
     @commands.is_owner()
-    async def eval(self, ctx: commands.Context, inc_str: Optional[bool] = True, inc_repr: Optional[bool] = False, *,
-                   exp: str):
+    async def _cmd_eval(self, ctx: commands.Context, inc_str: Optional[bool] = True, inc_repr: Optional[bool] = False, *,
+                       exp: str):
         """
         ```python
         return eval(exp)```
@@ -65,7 +65,7 @@ class PythonConsoleCog(Cog, name='PyConsole'):
 
     @commands.command('await_eval', aliases=['ae', 'await'])
     @commands.is_owner()
-    async def await_eval(self, ctx: commands.Context, inc_result: Optional[bool] = False, *, exp: str):
+    async def _cmd_await_eval(self, ctx: commands.Context, inc_result: Optional[bool] = False, *, exp: str):
         """
         ```python
         return await eval(exp)```
@@ -96,7 +96,7 @@ class PythonConsoleCog(Cog, name='PyConsole'):
 
     @commands.command('exec', aliases=['ex'])
     @commands.is_owner()
-    async def exec(self, ctx: commands.Context, *lines: str):
+    async def _cmd_exec(self, ctx: commands.Context, *lines: str):
         """
         ```python
         def _print(*obj, sep=' ', end='\\n'):

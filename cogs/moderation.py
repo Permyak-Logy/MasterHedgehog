@@ -62,7 +62,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx: commands.Context, member: discord.Member, time: str = "F", *reason: str):
+    async def _cmd_ban(self, ctx: commands.Context, member: discord.Member, time: str = "F", *reason: str):
         """
         Банит  участника сервера. Если был указано время не равное "F",
         то он забанит лишь на это время, а после снимает бан.
@@ -101,7 +101,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def unban(self, ctx: commands.Context, member: discord.Member, *reason):
+    async def _cmd_unban(self, ctx: commands.Context, member: discord.Member, *reason):
         """
         Разбанивает  участника по указанной причине. (Указывать её не обязательно)
         """
@@ -129,7 +129,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx: commands.Context, member: discord.Member, *reason: str):
+    async def _cmd_kick(self, ctx: commands.Context, member: discord.Member, *reason: str):
         """
         Исключает участника по указанной причине. (Указывать её не обязательно)
         """
@@ -158,7 +158,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def purge(self, ctx: commands.Context, limit: int, *check: str):
+    async def _cmd_purge(self, ctx: commands.Context, limit: int, *check: str):
         """
         Чистит канал с лимитом очистки сообщений и проверяющей функцией check
         Если limit == -1 то очистка будет всего канала
@@ -190,7 +190,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.command(name='пред', aliases=['warn'])
     @commands.cooldown(1, 5)
     @commands.guild_only()
-    async def warn(self, ctx: commands.Context, member: discord.Member, *reason: str):
+    async def _cmd_warn(self, ctx: commands.Context, member: discord.Member, *reason: str):
         """
         Высылает сообщение с предупреждением участнику и указанной причине (Указывать не обязательно)
         """
@@ -217,7 +217,7 @@ class ModerationCog(Cog, name="Модерация"):
     # TODO: Сделать больше информации
     @commands.command(name='юзер', aliases=['user', 'пользователь'])
     @commands.guild_only()
-    async def user(self, ctx: commands.Context, user: discord.Member = None):
+    async def _cmd_user(self, ctx: commands.Context, user: discord.Member = None):
         if not user:
             user = ctx.author
 
@@ -257,7 +257,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def mute(self, ctx: commands.Context, member: discord.Member, time: str = "F", *reason: str):
+    async def _cmd_mute(self, ctx: commands.Context, member: discord.Member, time: str = "F", *reason: str):
         """
         Мьютит участника (time указывается в виде числа и единиц измерений
         например: 1ч, 2д, 3с, 120м. (Единицы измерения: д, ч, м, с)
@@ -301,7 +301,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def unmute(self, ctx: commands.Context, member: discord.Member, *reason: str):
+    async def _cmd_unmute(self, ctx: commands.Context, member: discord.Member, *reason: str):
         """
         Снимает мьют с участника если таковой имеется
         """
@@ -333,7 +333,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.command(name='мьютроль', aliases=['muterole', 'мутроль'])
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
-    async def set_mute_role(self, ctx: commands.Context, role: discord.Role = None):
+    async def _cmd_set_mute_role(self, ctx: commands.Context, role: discord.Role = None):
         """
         Устанавливает роль для мьюта
         """

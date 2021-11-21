@@ -64,7 +64,7 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
 
     @commands.command(name='привканал', aliases=['set_pcc', 'private_channel'])
     @commands.guild_only()
-    async def set_private_channel_creator(self, ctx: commands.Context, *channels: discord.VoiceChannel):
+    async def _cmd_set_private_channel_creator(self, ctx: commands.Context, *channels: discord.VoiceChannel):
         """
         Устанавливает канал как канал который создаёт приватные каналы. Если ничего не указать то будет сброшен.
         """
