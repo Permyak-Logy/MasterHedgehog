@@ -22,7 +22,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
     @commands.command(name='activate', aliases=['act'])
     @commands.is_owner()
     @commands.guild_only()
-    async def activate(self, ctx: Context, cog: str = "ALL"):
+    async def activate(self, ctx: Context, *, cog: str = "ALL"):
         """
         Активирует на бессрочное использование указанный модуль
         """
@@ -48,7 +48,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
     @commands.command(aliases=['deact'])
     @commands.is_owner()
     @commands.guild_only()
-    async def deactivate(self, ctx: Context, cog: str = "ALL"):
+    async def deactivate(self, ctx: Context, *, cog: str = "ALL"):
         """
         Деактивирует на бессрочное использование указанный модуль
         """

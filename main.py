@@ -33,19 +33,17 @@ def main():
 
         bot_type=TypeBot.both,
         permissions=8,  # == Администратор
-        version="Beta 0.11"  # Дата 15.11.2021
+        version="Beta 0.12"  # Дата 15.11.2021
     )
 
     # noinspection SpellCheckingInspection
-    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warface.py', 'warframe.py', 'oldmusic.py']),
+    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warframe.py', 'APs.py', 'game_activity.py']),
                         os.listdir('cogs'))
-    cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names))
-
-    cogs.append('PLyBot.info')
-    cogs.append('PLyBot.api')
+    cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names)) + ['PLyBot.info', 'PLyBot.api']
     bot.load_all_extensions(cogs)
 
     with open('token.txt', encoding='utf8') as token_file:
+        print(bot.get_command('help'))
         bot.run(token_file.read())
 
 

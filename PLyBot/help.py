@@ -1,4 +1,4 @@
-import abc
+import inspect
 import itertools
 import re
 
@@ -17,16 +17,27 @@ class HelpCommand(commands.MinimalHelpCommand):
         self.subcommands_heading = "Подкоманды"
 
         self.colour = params.pop('colour', discord.colour.Colour.from_rgb(127, 127, 127))
+        self.hint_types = params.pop('hint_types', True)
 
     def get_command_signature(self, command):
         annotations = command.callback.__annotations__
         for key in list(annotations.keys()):
             val = annotations[key]
-            if any(isinstance(val, cls) for cls in [commands.Context, commands.Cog, commands.Bot, abc.ABCMeta]):
-                del annotations[key]
-        return "%s%s %s" % (self.clean_prefix,
-                            command.qualified_name,
-                            ' '.join(annotations.keys()))
+            if inspect.isclass(val):
+                annotations[key] = val.__name__
+                if any(issubclass(val, cls) for cls in [commands.Context, commands.Cog, commands.Bot]):
+                    del annotations[key]
+            if str(val).startswith('typing.'):
+                annotations[key] = str(val).replace('typing.', '', 1)
+            print(val.__class__)
+        if self.hint_types:
+            return "%s%s %s" % (self.clean_prefix,
+                                command.qualified_name,
+                                ' '.join(map(lambda data: f"<{data[0]}:{data[1]}>", annotations.items())))
+        else:
+            return "%s%s %s" % (self.clean_prefix,
+                                command.qualified_name,
+                                ' '.join(map(lambda data: f"<{data[0]}>", annotations.items())))
 
     def add_bot_commands_formatting(self, commands_, heading):
         if commands_:

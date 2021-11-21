@@ -3,10 +3,11 @@ import gc
 import logging
 import re
 from typing import Union, Optional, Type, Iterable, Callable
-
+from discord.ext import commands
 from discord import Status
 
 __logging = logging.getLogger(__name__)
+__old_f = commands.group
 
 ONLINE = 1
 OFFLINE = 2
@@ -128,6 +129,10 @@ class DBTools:
     # TODO: Убрать!!!
     # Некоторые манипуляции с бд о участниках серверов
     pass
+
+
+def group(name=None, invoke_without_command=True, **attrs):
+    return __old_f(name, invoke_without_command=invoke_without_command, **attrs)
 
 
 def full_using_db(*, default_return=None, is_async=False):
@@ -266,3 +271,6 @@ def get_any(__iterable: Iterable[T], key: Callable = bool) -> Optional[T]:
     for elem in __iterable:
         if key(elem):
             return elem
+
+
+commands.group = group  # Глобальная замена group в commands

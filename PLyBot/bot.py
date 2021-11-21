@@ -348,16 +348,17 @@ class Bot(commands.Bot):
 
         ctx: Context = await self.get_context(message, cls=Context)
 
-        # Смотрим. Можем ли мы отправить help через знак ?
-        split = ctx.message.content.split()
-        if ctx.command is not None and len(split) == 2 and split[1] == '?':
-            # Если да то отправляем help по возможности
-            invoked_help = bool(await ctx.send_help(ctx.invoked_with))
-        else:
-            invoked_help = False
+        req_help_cmd = ctx.is_requested_help()
+        if req_help_cmd:
+            # Если в конце "?" на поиск help команды то выводим его
+            help_command: HelpCommand = self.help_command.copy()
+            help_command.context = ctx
+            invoked_command_name = ctx.message.content[len(ctx.prefix):-2]
+            await help_command.prepare_help_command(ctx, command=invoked_command_name)
+            await help_command.command_callback(ctx, command=invoked_command_name)
 
-        if not invoked_help:
-            # В случае безуспешной отправки help мы вызываем функцию
+        else:
+            # В случае отправки help мы вызываем функцию
             await self.invoke(ctx)
 
         if ctx.command:
@@ -556,7 +557,7 @@ class Cog(commands.Cog, name="Без названия"):
         try:
             access: dict = config.get_access()
 
-            # Очищаем всё что пусто
+            # Очищаем всё что пусто и не было указанно
             for key in set(access.keys()):
                 if not access[key]:
                     del access[key]
@@ -564,7 +565,6 @@ class Cog(commands.Cog, name="Без названия"):
             # Добавляем всё недостающее
             for command in self.get_commands():
                 command: commands.Command
-                # print(command, command.parents)
                 if str(command) not in access:
                     access[str(command)] = {}
             if "__cog__" not in access:
@@ -639,6 +639,29 @@ class Context(commands.Context):
     @staticmethod
     def getattr(a, attr=None, default=None):
         return (getattr(a, attr) if attr else a) if a else default
+
+    async def just_send_help(self):
+        """Сокращение: await ctx.send_help(ctx.invoked_with)"""
+
+        return await self.send_help(self.invoked_with)
+
+    def is_requested_help(self) -> bool:
+        """ Был ли в команде запрошен help с помощью '?' в конце команды? """
+        split = self.message.content.split()
+        result = False
+        parent: Optional[Union[commands.Command, commands.Group]] = self.command
+        for i in range(1, len(split)):
+            if isinstance(parent, commands.Command) and split[i] == "?":
+                result = True
+                parent = None
+                continue
+            elif isinstance(parent, commands.Group):
+                parent = parent.get_command(split[i])
+            else:
+                parent = None
+            result = False
+
+        return result
 
 
 Cog.cog_check.__annotations__['ctx'] = Context

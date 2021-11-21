@@ -25,9 +25,14 @@ class StatisticCog(Cog, name='Статистика'):
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=StatisticConfig)
 
-    @commands.command()
+    @commands.group('stats')
+    async def group_stats(self, ctx: Context):
+        """Показывает статистику по указанной категории"""
+        await ctx.just_send_help()
+
+    @group_stats.command('guild')
     @commands.guild_only()
-    async def stats_guild(self, ctx: commands.Context):
+    async def cmd_stats_guild(self, ctx: Context):
         """
         Показывает статистику сервера
         """
@@ -59,15 +64,16 @@ class StatisticCog(Cog, name='Статистика'):
 
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @group_stats.command('role')
     @commands.guild_only()
-    async def stats_role(self, ctx: commands.Context, role: discord.Role):
+    async def cmd_stats_role(self, ctx: Context, _: discord.Role):
         """
         Показывает статистику роли на сервере
         """
+        await ctx.just_send_help()
 
-    @commands.command()
-    async def stats_bot(self, ctx: Context):
+    @group_stats.command('bot')
+    async def cmd_stats_bot(self, ctx: Context):
         """
         Показывает статистику бота
         """
