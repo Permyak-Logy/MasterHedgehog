@@ -1,9 +1,8 @@
 from typing import Iterable
 
 import discord
-import sqlalchemy
 from sqlalchemy import orm
-
+from sqlalchemy import Column, ForeignKey,Integer, String, Boolean
 import db_session
 from db_session import SqlAlchemyBase
 
@@ -11,11 +10,17 @@ from db_session import SqlAlchemyBase
 class Guild(SqlAlchemyBase):
     __tablename__ = 'guilds'
 
-    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, nullable=False)
-    owner = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'), nullable=False)
-    name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+    id = Column(Integer, primary_key=True, nullable=False)
+    owner = Column(Integer, ForeignKey('users.id'), nullable=False)
+    name = Column(String, nullable=False)
 
-    ban_activity = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
+    ban_activity = Column(Boolean, default=False)
+
+    language_cmd = Column(String, default="ru")
+    language_text = Column(String, default="en")
+    timezone = Column(String, default="Europe/Moscow")
+    system_color = Column(String, default="#8A3B03")
+
     members = orm.relation("Member", back_populates='guild')
 
     def __repr__(self):

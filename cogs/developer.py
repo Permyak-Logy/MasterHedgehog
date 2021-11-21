@@ -17,9 +17,15 @@ activate_parser.add_argument('-A', action="store_true")
 # TODO: Русифицировать команды
 class DeveloperCog(Cog, name="Для разработчиков"):
     def __init__(self, bot: Bot):
-        super().__init__(bot)
+        super().__init__(bot, emoji_icon="🛠️")
 
-    @commands.command(name='activate', aliases=['act'])
+    @commands.group(name='sudo', alaises=['su'])
+    @commands.is_owner()
+    async def _group_sudo(self, ctx: Context):
+        """Вызов root команд"""
+        await ctx.just_send_help()
+
+    @_group_sudo.command(name='activate', aliases=['act'])
     @commands.is_owner()
     @commands.guild_only()
     async def activate(self, ctx: Context, *, cog: str = "ALL"):
@@ -45,7 +51,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                                                             f'{activated}', colour=self.bot.colour_embeds)
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=['deact'])
+    @_group_sudo.command(aliases=['deact'])
     @commands.is_owner()
     @commands.guild_only()
     async def deactivate(self, ctx: Context, *, cog: str = "ALL"):
@@ -72,7 +78,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                                                             f'{activated}', colour=self.bot.colour_embeds)
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=['set_cau'])
+    @_group_sudo.command(aliases=['set_cau'])
     @commands.is_owner()
     async def set_cog_active_until(self, ctx: Context, guild: int, cog: str, date: str = None):
         """
@@ -102,7 +108,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             title="Успех", description=f"Время активности {cog} сервера {guild} установленно на {date}",
             colour=self.bot.colour_embeds))
 
-    @commands.command(aliases=['get_cau'])
+    @_group_sudo.command(aliases=['get_cau'])
     @commands.is_owner()
     async def get_cog_active_until(self, ctx: Context, guild: int, cog: str):
         guild = self.bot.get_guild(guild)
@@ -123,17 +129,17 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             await ctx.send(embed=embed)
 
     # TODO: Сделать бан гильдии, разбан гильдии, отправка сообщения пользователю, перезагрузка
-    @commands.command()
+    @_group_sudo.command()
     @commands.is_owner()
     async def ban_guild(self, ctx: Context, guild: discord.Guild = None):
         pass
 
-    @commands.command()
+    @_group_sudo.command()
     @commands.is_owner()
     async def unban_guild(self, ctx: Context, guild: discord.Guild = None):
         pass
 
-    @commands.command(name="отпр", aliases=['send'])
+    @_group_sudo.command(name="отпр", aliases=['send'])
     @commands.is_owner()
     async def send(self, ctx: Context, user: discord.User, *text: str):
         """
@@ -150,14 +156,14 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                 else:
                     await ctx.send("Доставлено!")
 
-    @commands.command(name="перезагрузка", aliases=['reboot'])
+    @_group_sudo.command(name="перезагрузка", aliases=['reboot'])
     @commands.is_owner()
     async def reboot(self, ctx: Context):
         """
         Перезагружает систему бота
         """
 
-    @commands.command(name="отключение", aliases=['logout', 'exit', 'disconnect', 'close'])
+    @_group_sudo.command(name="отключение", aliases=['logout', 'exit', 'disconnect', 'close'])
     @commands.is_owner()
     async def logout(self, ctx: Context):
         """
@@ -174,7 +180,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         await asyncio.sleep(delay + 1)
         await self.bot.logout()
 
-    @commands.command()
+    @_group_sudo.command()
     @commands.is_owner()
     async def ctrl_c(self, ctx: Context):
         """

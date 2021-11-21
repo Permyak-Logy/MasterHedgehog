@@ -55,7 +55,7 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=PrivateChannelsConfig)
+        super().__init__(bot, cls_config=PrivateChannelsConfig, emoji_icon='🔑')
         self.bot.add_cog_blueprint(PrivateChannelsBP(self), url_prefix='/private_channels')
 
     def get_config(self, session: db_session.Session,
@@ -131,7 +131,6 @@ class PrivateChannelsBP(BaseApiBP):
     def get_channels_bp():
         with db_session.create_session() as session:
             guild_id = request.headers[HeadersApi.GUILD_ID]
-            api_key = request.headers['api-key']
 
             config = session.query(PrivateChannelsConfig).filter(
                 PrivateChannelsConfig.guild_id == int(guild_id)).first()

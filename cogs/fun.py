@@ -10,6 +10,8 @@ import db_session
 from PLyBot import Bot, Cog, Context
 from PLyBot.const import TEXT_EMOJI_NUMBERS
 from db_session.base import Message
+from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
+from sqlalchemy import Column, ForeignKey, Integer, String, Date
 
 try:
     from other import swift
@@ -21,10 +23,20 @@ except ImportError:
 logging = logging.getLogger(__name__)
 
 
+class FunConfig(SqlAlchemyBase, BaseConfigMix):
+    __tablename__ = "fun_configs"
+
+    guild_id = Column(Integer, ForeignKey('guilds.id'),
+                      primary_key=True, nullable=False)
+    mute_role = Column(Integer, nullable=True, unique=True)
+    access = Column(String, nullable=False, default='{}')
+    active_until = Column(Date, nullable=True, default=MIN_DATETIME)
+
+
 # TODO: R
 class FunCog(Cog, name="Веселье"):
     def __init__(self, bot: Bot):
-        super().__init__(bot)
+        super().__init__(bot, cls_config=FunConfig, emoji_icon='😂')
 
     @commands.command('load_all_msgs')
     @commands.is_owner()
@@ -107,7 +119,7 @@ class FunCog(Cog, name="Веселье"):
 
             await ctx.send(' '.join(sentence))
 
-    @commands.command('say')
+    @commands.command('say', enabled=False)
     @commands.is_owner()
     @commands.guild_only()
     async def _cmd_say(self, ctx: Context, member: discord.Member, *, text: str):
@@ -115,7 +127,7 @@ class FunCog(Cog, name="Веселье"):
         filename = f"audio\\{ctx.guild.id}-{ctx.author.id}-{member.id}.mp3"
         engine.save_to_file(text, filename)
         engine.runAndWait()
-        from cogs.oldmusic import MusicCog
+        from cogs.music import MusicCog
         cog: MusicCog = self.bot.get_cog('Музыка')
         voice_m: discord.VoiceState = member.voice
         channel: discord.VoiceChannel = voice_m.channel
@@ -124,13 +136,13 @@ class FunCog(Cog, name="Веселье"):
         except discord.ClientException as E:
             logging.error(str(E))
             voice = self.bot.get_voice_client(ctx.guild)
-        await cog.start_play(voice, filename)
+        # await cog.start_play(voice, filename)  TODO: Вернуть
 
         import os
         if os.path.isfile(filename):
             os.remove(filename)
 
-    @commands.command('say_pc')
+    @commands.command('say_pc', enabled=False)
     @commands.is_owner()
     async def _cmd_say_pc(self, _: Context, *, text: str):
         engine = pyttsx3.init()

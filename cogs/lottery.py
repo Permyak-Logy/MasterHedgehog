@@ -27,7 +27,7 @@ class LotteryCog(Cog, name="Лотереи"):
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=LotteryConfig)
+        super().__init__(bot, cls_config=LotteryConfig, emoji_icon='🎉')
 
     # TODO: Заглушка
     @commands.command('розыгрыш_денег', aliases=['add_lottery_moneys', 'lottery_moneys'], enabled=False)

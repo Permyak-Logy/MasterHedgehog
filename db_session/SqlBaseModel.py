@@ -37,12 +37,10 @@ class BaseConfigMix:
             raise AttributeError("У меня нет возможности представлять доступы")
 
     async def check_access(self, ctx: commands.Context) -> bool:
-        print('check', ctx.command)
         try:
             access = self.get_access()
 
         except AttributeError:
-            print('no access')
             return True
         try:
             # TODO: Сделать для каждой команды свои настройки допуска

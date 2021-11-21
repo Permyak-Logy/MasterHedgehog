@@ -43,7 +43,7 @@ class TicketsCog(Cog, name='Билеты'):
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=TicketsConfig)
+        super().__init__(bot, cls_config=TicketsConfig, emoji_icon='📨')
         self.bot.add_models(TicketsSection, TicketSession)
 
     def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[TicketsConfig]:

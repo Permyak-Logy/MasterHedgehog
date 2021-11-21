@@ -57,7 +57,7 @@ class ApiKey(SqlAlchemyBase):  # TODO: Ассиметричное шифрова
 
 class AccessCog(Cog, name="Access Master Ёжа"):
     def __init__(self, bot):
-        super().__init__(bot)
+        super().__init__(bot, emoji_icon='🛡️')
         self.bot.add_cog_blueprint(KeysApiBP(self), url_prefix='/access')
         self.bot.add_blueprint(HintsBP(self.bot).blueprint, url_prefix='/hints')
         self.bot.add_models(ApiKey)

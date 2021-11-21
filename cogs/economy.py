@@ -122,7 +122,7 @@ class PromoCode(SqlAlchemyBase):
 
 class EconomyCog(Cog, name='Экономика'):
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=EconomyConfig)
+        super().__init__(bot, cls_config=EconomyConfig, emoji_icon='💎')
         self.bot.add_models(LuckBox, FeatureMember, PromoCode, Balance)
 
     def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[EconomyConfig]:

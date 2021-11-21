@@ -69,15 +69,17 @@ class MusicCog(Cog, name='Музыка YouTube'):
     # TODO: Сделать обновление плейера при завершении игры музыки
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=MusicConfig)
+        super().__init__(bot, cls_config=MusicConfig, emoji_icon='🎧')
         self.__online_music_players = {}
 
     @commands.group('music')
+    @commands.guild_only()
     async def _group_music(self, ctx: Context):
         """Команды для управления музыкой"""
         await ctx.just_send_help()
 
     @_group_music.command('join')
+    @commands.guild_only()
     async def _cmd_music_join(self, ctx: Context, *, channel: discord.VoiceChannel):
         """Joins a voice channel"""
 
@@ -87,6 +89,7 @@ class MusicCog(Cog, name='Музыка YouTube'):
         await channel.connect()
 
     @_group_music.command('play')
+    @commands.guild_only()
     async def _cmd_music_play(self, ctx: Context, *, url):
         """Streams from a url (same as yt, but doesn't pre download)"""
 
@@ -103,7 +106,9 @@ class MusicCog(Cog, name='Музыка YouTube'):
 
         emb = discord.Embed(
             title='Муз плейер',
-            description=f'**Играет:** {player.title}')
+            description=f'**Играет:** {player.title}',
+            colour=self.bot.colour_embeds
+        )
         emb.add_field(
             name='Статус', value='🟢 Играет').add_field(
             name="Громкость", value=str(round(ctx.voice_client.source.volume * 100)) + "%")
@@ -118,6 +123,7 @@ class MusicCog(Cog, name='Музыка YouTube'):
         self.__online_music_players[ctx.guild.id] = msg.id
 
     @_group_music.command('volume')
+    @commands.guild_only()
     async def _cmd_music_volume(self, ctx: Context, volume: int):
         """Changes the player's volume"""
 
@@ -128,10 +134,11 @@ class MusicCog(Cog, name='Музыка YouTube'):
         await ctx.send(f"Changed volume to {volume}%")
 
     @_group_music.command('stop')
+    @commands.guild_only()
     async def _cmd_music_stop(self, ctx: Context):
         """Stops and disconnects the bot from voice"""
-
-        await ctx.voice_client.disconnect()
+        if ctx.voice_client:
+            await ctx.voice_client.disconnect()
 
     @commands.Cog.listener('on_raw_reaction_add')
     async def _listener_using_music_player(self, payload: discord.RawReactionActionEvent):

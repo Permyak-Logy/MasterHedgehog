@@ -23,15 +23,17 @@ from .help import HelpCommand
 logging = logging.getLogger(__name__)
 
 
+# TODO: /команды
+# TODO: Эмодзи успеха
+# TODO: Аватар
+# TODO: Ранговая система
+
 class Bot(commands.Bot):
     def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
                  turn_on_api_server=False, **options):
-        super().__init__(intents=options.pop("intents", discord.Intents.all()),
-                         help_command=options.pop('help_command', HelpCommand()),
-                         **options)
+        super().__init__(intents=options.pop("intents", discord.Intents.all()), **options)
         self.__db_connect = db_con
         self.__models = {}
-
         self.__blueprints = {}  # "/url_prefix": <class: blueprint>
         self.__cog_blueprints = {}
 
@@ -43,8 +45,9 @@ class Bot(commands.Bot):
             self._skip_check = lambda x, y: False
         else:
             self._skip_check = lambda x, y: True
+
         self.name = options.pop("bot_name", self.__class__.__name__)
-        self.version = options.pop("version", "unknown")
+        self.version, self.build_date = options.pop("version", ("unknown", datetime.now()))
 
         self.colour_embeds = options.pop("colour_embeds", discord.colour.Color.from_rgb(127, 127, 127))
         self.activity: discord.Activity = options.pop("activity", None)
@@ -55,6 +58,11 @@ class Bot(commands.Bot):
 
         self.count_invokes = 0
         self.after_invoke(self.on_after_invoke)
+        self.before_invoke(self.on_before_invoke)
+
+        self.ignore_errors = options.pop("ignore_errors", tuple())
+
+        self.footer = options.pop("footer", None)
 
         self.__ready_db = False
         if turn_on_api_server:
@@ -303,10 +311,25 @@ class Bot(commands.Bot):
         if await self.is_owner(user=ctx.author):
             embed.add_field(name="SysMsg", value="`{}: {}`".format(type(exception), exception))
 
-        await ctx.reply(embed=embed)
+        if not isinstance(exception, self.ignore_errors):
+            await ctx.reply(embed=embed, delete_after=10)
+
+        if isinstance(exception, (commands.CommandNotFound, commands.CommandOnCooldown, commands.BadArgument)):
+            await ctx.message.add_reaction('⚠️')
+        elif isinstance(exception, commands.CheckFailure):
+            await ctx.message.add_reaction('🚫')
+        else:
+            await ctx.message.add_reaction('❌')
+        await ctx.message.remove_reaction('✅', ctx.me)
 
     async def on_after_invoke(self, _):
         self.count_invokes += 1
+
+    # noinspection PyMethodMayBeStatic
+    async def on_before_invoke(self, ctx: commands.Context):
+        message: discord.Message = ctx.message
+        if message:
+            await message.add_reaction(emoji="✅")
 
     # Полезные методы #####################################################
     def add_cogs(self, *cogs: commands.Cog):
@@ -455,8 +478,9 @@ class Cog(commands.Cog, name="Без названия"):
     count_inited = 0
     count_ready = 0
 
-    def __init__(self, bot: Bot, cls_config=None):
+    def __init__(self, bot: Bot, cls_config=None, emoji_icon=None):
         self.bot = bot
+        self.emoji_icon = emoji_icon
         if cls_config is not None:
             assert self.bot.using_db, "Для работы модуля необходимо использование базы данных"
         self.cls_config: Type[cls_config.__class__] = cls_config

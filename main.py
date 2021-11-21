@@ -1,10 +1,12 @@
+import datetime
 import json
 import logging
 import os
 
 import discord
+from discord.ext import commands
 
-from PLyBot import Bot, not_in
+from PLyBot import Bot, not_in, HelpCommand
 from PLyBot.enums import TypeBot
 
 with open('config.json', encoding='utf8') as conf_file:
@@ -30,10 +32,11 @@ def main():
         activity=discord.Game(bot_conf['game_activity']),
         bot_name=bot_conf['bot_name'],
         turn_on_api_server=bot_conf.get('turn_on_api_server', False),
-
+        footer=("PyPLy © | Сделано в России! 👀", "https://bit.ly/3qVNENv"),
+        help_command=HelpCommand(width=70),
         bot_type=TypeBot.both,
-        permissions=8,  # == Администратор
-        version="Beta 0.12"  # Дата 15.11.2021
+        ignore_errors=(commands.CommandNotFound, ),
+        permissions=8, version=("Beta 0.13", datetime.date(day=21, month=11, year=2021))
     )
 
     # noinspection SpellCheckingInspection
@@ -43,7 +46,6 @@ def main():
     bot.load_all_extensions(cogs)
 
     with open('token.txt', encoding='utf8') as token_file:
-        print(bot.get_command('help'))
         bot.run(token_file.read())
 
 

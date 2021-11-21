@@ -108,7 +108,7 @@ class RolesCog(Cog, name='Роли'):
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=RolesConfig)
+        super().__init__(bot, cls_config=RolesConfig, emoji_icon='🃏')
 
     def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[RolesConfig]:
         return super().get_config(session, guild)
@@ -416,6 +416,8 @@ class RolesCog(Cog, name='Роли'):
     async def set_auto_roles(self):
         pass
 
+
+# TODO: Создание цветных ролей
 
 def setup(bot: Bot):
     bot.add_cog(RolesCog(bot))

@@ -10,7 +10,7 @@ from .const import ALL_GOOD_TYPES
 
 class InfoCog(Cog, name="Информация"):
     def __init__(self, bot: Bot):
-        super().__init__(bot)
+        super().__init__(bot, emoji_icon='📌')
 
         help_cmd: commands.Command = self.bot.get_command("help")
         help_cmd.name = 'хелп'
@@ -51,21 +51,22 @@ class InfoCog(Cog, name="Информация"):
         embed.set_thumbnail(url=bot.user.avatar_url)
         if isinstance(owner, discord.User):
             embed.set_author(name=owner.name, icon_url=owner.avatar_url)
-            embed.set_footer(text="PyPLy ©", icon_url=owner.avatar_url)
+            if self.bot.footer:
+                embed.set_footer(text=self.bot.footer[0], icon_url=self.bot.footer[1])
             embed.add_field(name="Мой разработчик", value=f"{owner}")
             embed.set_image(
                 url="https://cdn.discordapp.com/attachments/653543360161644545/911597130412593162/Master_.png")
         await asyncio.sleep(1.5)
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed)
 
     @commands.command(name="пинг", aliases=["ping"])
     async def ping(self, ctx: Context):
         """
         Высылает задержку между ботом и Discord
         """
-        await ctx.send(embed=discord.Embed(title="Понг!", description=f"Задержка {round(self.bot.latency, 3) * 1000} "
-                                                                      f"мс.",
-                                           colour=self.bot.colour_embeds))
+        await ctx.reply(embed=discord.Embed(title="Понг!", description=f"Задержка {round(self.bot.latency, 3) * 1000} "
+                                                                       f"мс.",
+                                            colour=self.bot.colour_embeds))
 
     @commands.command(name="пригласить", aliases=["invite"])
     async def invite(self, ctx: Context):
@@ -73,12 +74,61 @@ class InfoCog(Cog, name="Информация"):
         Отправляет ссылку для приглашения бота
         """
         link = await ctx.bot.invite_link
-        await ctx.send(embed=discord.Embed(
-            title="Нажми сюда чтобы меня добавить на свой сервер", description=f"||{link}||", url=link,
+        await ctx.reply(embed=discord.Embed(
+            title="Нажми сюда чтобы меня добавить на свой сервер", url=link,
             colour=ctx.bot.colour_embeds).set_thumbnail(url=ctx.bot.user.avatar_url))
 
+    @commands.command(name="сервер", aliases=['server'])
+    async def _cmd_server(self, ctx: Context):
+        """Показывает информацию о сервере: количество участников, владельца, уровень проверки и так далее."""
+        guild = ctx.guild
+
+        statuses = list(map(lambda m: m.status, guild.members))
+        types = list(map(lambda m: m.bot, guild.members))
+
+        embed = discord.Embed(
+            title=f"Информация о сервере {guild}", colour=self.bot.colour_embeds).set_thumbnail(url=guild.icon_url)
+        embed.add_field(name="Участники", value=f"\\👥 Всего: **{guild.member_count}**\n"
+                                                f"\\👤 Людей: **{types.count(False)}**\n"
+                                                f"\\🤖 Ботов: **{types.count(True)}**")
+
+        statuses_text = ""
+        count_online = statuses.count(discord.Status.online)
+        count_idle = statuses.count(discord.Status.idle)
+        count_dnd = statuses.count(discord.Status.dnd)
+        count_offline = statuses.count(discord.Status.offline)
+        if count_online:
+            statuses_text += f"\\🟢 В сети: **{count_online}**\n"
+        if count_idle:
+            statuses_text += f"\\🟠 Не активен: **{count_idle}**\n"
+        if count_dnd:
+            statuses_text += f"\\🔴 Не беспокоить: **{count_dnd}**\n"
+        if count_offline:
+            statuses_text += f"\\⚫ Не в сети: **{count_offline}**\n"
+        embed.add_field(name="По статусам:", value=statuses_text)
+
+        channels_text = f"\\💬 Всего: {guild.channels.__len__()}\n"
+        if guild.text_channels:
+            channels_text += f"**#** Текстовых: **{guild.text_channels.__len__()}**\n"
+        if guild.voice_channels:
+            channels_text += f"\\🔊 Голосовых: **{guild.voice_channels.__len__()}**\n"
+        if guild.stage_channels:
+            channels_text += f"\\📣 Stage: **{guild.stage_channels.__len__()}**\n"
+        embed.add_field(name="Каналы:", value=channels_text)
+
+        embed.add_field(name="Владелец", value=str(guild.owner))
+        embed.add_field(name="Уровень проверки:", value=str(guild.mfa_level or "Отсутствует"))
+        embed.add_field(name="Дата создания:", value=str(guild.created_at.date()))
+        embed.set_footer(text=f"ID: {guild.id}")
+
+        await ctx.reply(embed=embed)
+
+    @commands.command(name="инвайтинфо", aliase=['inviteinfo'], enabled=False)
+    async def _cmd_invite_info(self, ctx: Context):
+        """Показывает более детальную информацию о ссылке приглашении"""
+
     # TODO: заглушено на время работ
-    # @commands.command(name="синтакс", aliases=["syntax"])
+    @commands.command(name="синтакс", aliases=["syntax"], enabled=False)
     async def syntax(self, ctx: Context):
         """
         Показывает сообщение
@@ -92,7 +142,7 @@ class InfoCog(Cog, name="Информация"):
         )
         await ctx.send(embed=embed)
 
-    # @commands.command(name="чексинтакс", aliases=["checksyntax"])
+    @commands.command(name="чексинтакс", aliases=["checksyntax"], enabled=False)
     async def check_syntax(self, ctx: Context, *args: ALL_GOOD_TYPES):
         """
         Используйте эту команду для определения того что получит команда в качестве аргументов
@@ -110,7 +160,7 @@ class InfoCog(Cog, name="Информация"):
             embed.add_field(name=f"{i + 1}. {type(arg)}", value=arg)
         await ctx.send(embed=embed)
 
-    @commands.command(name="видят", aliases=['see'])
+    @commands.command(name="видят", aliases=['see'], enabled=False)
     async def have_access(self, ctx: Context,
                           channel: Union[discord.VoiceChannel, discord.TextChannel, discord.StageChannel]):
         """
@@ -135,7 +185,7 @@ class InfoCog(Cog, name="Информация"):
         emb.add_field(name="Канал", value=channel.mention)
         await ctx.send(embed=emb)
 
-    # @commands.command(name="префикс", aliases=['prefix'])
+    @commands.command(name="префикс", aliases=['prefix'], enabled=False)
     async def set_prefix(self, ctx: Context, prefix: str):
         pass
 

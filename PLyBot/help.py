@@ -8,16 +8,24 @@ from discord.ext import commands
 from .paginator import Paginator
 
 
+# TODO: примеры использования
 class HelpCommand(commands.MinimalHelpCommand):
     def __init__(self, **params):
 
-        super(HelpCommand, self).__init__(paginator=Paginator(prefix=None, suffix=None, max_size=1800),
+        super(HelpCommand, self).__init__(paginator=Paginator(prefix=None, suffix=None, max_size=1900),
                                           commands_heading="Команды",
                                           aliases_heading="Псевдонимы", **params)
+        self.width = params.pop('width', 80)
         self.subcommands_heading = "Подкоманды"
 
         self.colour = params.pop('colour', discord.colour.Colour.from_rgb(127, 127, 127))
         self.hint_types = params.pop('hint_types', True)
+
+    def shorten_text(self, text):
+        """:class:`str`: Shortens text to fit into the :attr:`width`."""
+        if len(text) > self.width:
+            return text[:self.width - 3] + '...'
+        return text
 
     def get_command_signature(self, command):
         annotations = command.callback.__annotations__
@@ -39,12 +47,13 @@ class HelpCommand(commands.MinimalHelpCommand):
                                 command.qualified_name,
                                 ' '.join(map(lambda data: f"<{data[0]}>", annotations.items())))
 
-    def add_bot_commands_formatting(self, commands_, heading):
+    def add_bot_commands_formatting(self, commands_, heading, emoji=None):
         if commands_:
-            joined = '`' + '`\u2002`'.join(c.name for c in commands_) + '`'
+            joined = '\u2002'.join(f'`{self.context.prefix}{str(c.name)}`' for c in commands_)
             self.paginator.add_line(
-                f'# ' + "%s ({}{} %s)".format(self.context.bot.command_prefix,
-                                              self.context.bot.get_command("help")) % (heading, heading))
+                f'# ' + "{}%s ({}{} %s)".format(emoji + ' ' if emoji else '',
+                                                self.context.bot.command_prefix,
+                                                self.context.bot.get_command("help")) % (heading, heading))
             self.paginator.add_line(joined)
 
     def add_subcommand_formatting(self, command):
@@ -53,7 +62,8 @@ class HelpCommand(commands.MinimalHelpCommand):
             command, self.context.bot.command_prefix, self.context.bot.get_command('help'), command))
 
         if command.short_doc:
-            self.paginator.add_line(command.short_doc)
+            # TODO: Сделать свой short_doc
+            self.paginator.add_line(self.shorten_text(command.short_doc))
 
     def add_command_formatting(self, command: commands.Command):
         self.paginator.add_line(f"## " + "Команда {} ({})".format(
@@ -102,7 +112,7 @@ class HelpCommand(commands.MinimalHelpCommand):
     async def send_bot_help(self, mapping):
         ctx = self.context
         bot = ctx.bot
-
+        self.paginator.add_line(f"## Команды " + bot.user.name)
         self.paginator.add_line(f"<t> " + str(bot.user.avatar_url), empty=True)
 
         note = self.get_opening_note()
@@ -111,17 +121,22 @@ class HelpCommand(commands.MinimalHelpCommand):
 
         def get_category(command, *, no_category_="Без имени"):
             cog = command.cog
-            return cog.qualified_name if cog is not None else no_category_
+            return (cog.qualified_name, cog.emoji_icon) if cog is not None else (no_category_, None)
 
         filtered = await self.filter_commands(bot.commands, sort=True, key=get_category)
         to_iterate = itertools.groupby(filtered, key=get_category)
 
         self.paginator.add_line("==== **Доступные категории и команды** ====", empty=True)
-        for category, commands_ in to_iterate:
+        for (category, emoji), commands_ in to_iterate:
             commands_ = sorted(commands_, key=lambda c: c.name) if self.sort_commands else list(commands_)
-            self.add_bot_commands_formatting(commands_, category)
+            self.add_bot_commands_formatting(commands_, category, emoji=emoji)
 
-        await self.send_pages(rd=True)
+        if self.context.bot.footer:
+            footer = self.context.bot.footer
+            self.paginator.add_line('<fn> ' + footer[0])
+            self.paginator.add_line('<fi> ' + footer[1])
+
+        await self.send_pages()
         return bot
 
     async def send_cog_help(self, cog: commands.Cog):
@@ -143,10 +158,18 @@ class HelpCommand(commands.MinimalHelpCommand):
             for command in filtered:
                 self.add_subcommand_formatting(command)
 
-        await self.send_pages(rd=True)
+        if self.context.bot.footer:
+            footer = self.context.bot.footer
+            self.paginator.add_line('<fn> ' + footer[0])
+            self.paginator.add_line('<fi> ' + footer[1])
+
+        await self.send_pages()
         return cog
 
     async def send_group_help(self, group: commands.Group):
+        self.paginator.add_line(f"<t> " + str(self.context.bot.user.avatar_url),
+                                empty=True)
+
         self.add_command_formatting(group)
 
         filtered = await self.filter_commands(group.commands, sort=self.sort_commands)
@@ -155,45 +178,62 @@ class HelpCommand(commands.MinimalHelpCommand):
             for command in filtered:
                 self.add_subcommand_formatting(command)
 
-        await self.send_pages(rd=True)
+        if self.context.bot.footer:
+            footer = self.context.bot.footer
+            self.paginator.add_line('<fn> ' + footer[0])
+            self.paginator.add_line('<fi> ' + footer[1])
+
+        await self.send_pages()
+        return group
 
     async def send_command_help(self, command: commands.Command):
         self.paginator.add_line(
             f"<t> " + str(self.context.bot.user.avatar_url), empty=True)
 
         self.add_command_formatting(command)
+
+        if self.context.bot.footer:
+            footer = self.context.bot.footer
+            self.paginator.add_line('<fn> ' + footer[0])
+            self.paginator.add_line('<fi> ' + footer[1])
         self.paginator.close_page()
-        await self.send_pages(rd=True)
+
+        await self.send_pages()
         return command
 
-    async def send_pages(self, rd=False):
+    async def send_pages(self, embed_markup=True):
         destination = self.get_destination()
-        title = footer = author = image = thumbnail = video = None
+        title = author = footer = image = thumbnail = video = ''
+        footer_icon = author_icon = discord.embeds.EmptyEmbed
         for page in self.paginator.pages:
-            if not rd:
+            if not embed_markup:
                 await destination.send("\n".join(page))
-                continue
+                break
             cur = None
             fields = {None: []}
             for line in page:
-                if re.match(r"#{2} .+", line):
+                if re.match(r"#{2} .+", line):  # Title Embed and start description
                     title = line[3:]
                     cur = None
                     fields[cur] = []
-                elif re.match(r"# .+", line):
+                elif re.match(r"# .+", line):  # Title Field and start this field
                     cur = line[2:]
                     fields[cur] = []
-                elif re.match(r"<f> .+", line):
-                    pass
-                elif re.match(r"<a> .+", line):
-                    pass
-                elif re.match(r"<i> .+", line):
+                elif re.match(r"<fn> .+", line):  # Footer Name
+                    footer = line[5:]
+                elif re.match(r"<fi> .+", line):  # Footer Icon
+                    footer_icon = line[5:]
+                elif re.match(r"<an> .+", line):  # Author Name
+                    author = line[5:]
+                elif re.match(r"<ai> .+", line):  # Author Icon
+                    author_icon = line[5:]
+                elif re.match(r"<i> .+", line):  # Image
                     image = line[4:]
-                elif re.match(r"<t> .+", line):
+                elif re.match(r"<t> .+", line):  # Thumbnail
                     thumbnail = line[4:]
-                elif re.match(r"<d>", line):
+                elif re.match(r"<d>", line):  # Description Start
                     cur = None
-                elif re.match(r"<v>", line):
+                elif re.match(r"<v>", line):  # Video
                     video = line[4:]
                 else:
                     fields[cur].append(line)
@@ -202,16 +242,16 @@ class HelpCommand(commands.MinimalHelpCommand):
                 title=title or self.context.bot.user.name,
                 colour=self.colour,
                 description="\n".join(fields[None]) if fields[None] else None,
-                video=str(video) if video is not None else None,
-                image=str(image) if image is not None else None,
-                thumbnail=str(thumbnail) if thumbnail is not None else None
+                video=video if video else None
             )
-            not footer or embed.set_footer(text=str(footer))
-            not author or embed.set_author(name=str(author))
-            not image or embed.set_image(url=str(image))
-            not thumbnail or embed.set_thumbnail(url=str(thumbnail))
+            not footer or embed.set_footer(text=footer, icon_url=footer_icon)
+            not author or embed.set_author(name=author, icon_url=author_icon)
+            not image or embed.set_image(url=image)
+            not thumbnail or embed.set_thumbnail(url=thumbnail)
+
             for field, lines in fields.items():
                 if field is not None:
                     embed.add_field(name=field, value="\n".join(lines) or "||Нет описания||",
                                     inline=False)
-            await destination.send(embed=embed)
+
+            await self.context.reply(embed=embed)

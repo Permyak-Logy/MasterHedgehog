@@ -23,7 +23,7 @@ class StatisticCog(Cog, name='Статистика'):
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=StatisticConfig)
+        super().__init__(bot, cls_config=StatisticConfig, emoji_icon='📊')
 
     @commands.group('stats')
     async def group_stats(self, ctx: Context):

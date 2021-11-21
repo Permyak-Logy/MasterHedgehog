@@ -24,7 +24,7 @@ class RandomCog(Cog, name='Случайности'):
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=RandomConfig)
+        super().__init__(bot, cls_config=RandomConfig, emoji_icon='🎱')
 
     @commands.group('random', aliases=['rand'])
     async def _group_random(self, ctx: commands.Context):

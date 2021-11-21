@@ -23,7 +23,7 @@ class PythonConsoleCog(Cog, name='PyConsole'):
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot)
+        super().__init__(bot, emoji_icon='🖥️')
         self.locals = {}
 
     # @tasks.loop(seconds=10)

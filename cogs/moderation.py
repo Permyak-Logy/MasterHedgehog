@@ -52,7 +52,7 @@ class ModerationCog(Cog, name="Модерация"):
     """
 
     def __init__(self, bot: Bot):
-        super().__init__(bot, cls_config=ModerationConfig)
+        super().__init__(bot, cls_config=ModerationConfig, emoji_icon='⚙️')
 
     def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[ModerationConfig]:
         return super().get_config(session, guild)
