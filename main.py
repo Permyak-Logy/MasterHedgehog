@@ -38,7 +38,7 @@ def main():
         help_command=HelpCommand(width=70),
         bot_type=TypeBot.both,
         ignore_errors=(commands.CommandNotFound, commands.CheckFailure),
-        permissions=8, version=("Beta 0.13", datetime.date(day=21, month=11, year=2021))
+        permissions=8, version=("Beta 0.14", datetime.date(day=22, month=11, year=2021))
     )
 
     # noinspection SpellCheckingInspection
