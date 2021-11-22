@@ -44,9 +44,9 @@ class RandomCog(Cog, name='Случайности'):
 
         item = random.choice(items)
         phrase = random.choice([
-            f'Иии... я выбираю "{item}"',
-            f'Мой выбор: "{item}"',
-            f'Знаки указывают на "{item}"',
+            f'Иии... я выбираю {item}',
+            f'Мой выбор: {item}',
+            f'Знаки указывают на {item}',
             f'{item}',
             'Я щас не в настроении... Спроси ещё раз!'
         ])
@@ -106,7 +106,8 @@ class RandomCog(Cog, name='Случайности'):
         results = [random.randint(1, 6) for _ in range(count)]
         total = sum(results)
         results = list(map(EMOJI_NUMBERS.get, results))
-        await ctx.reply(embed=discord.Embed(description=" + ".join(results) + f" = {total}"))
+        await ctx.reply(
+            embed=discord.Embed(description=" + ".join(results) + f" = {total}", colour=self.bot.colour_embeds))
 
 
 def setup(bot: Bot):

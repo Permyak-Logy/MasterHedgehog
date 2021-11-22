@@ -37,7 +37,6 @@ class HelpCommand(commands.MinimalHelpCommand):
                     del annotations[key]
             if str(val).startswith('typing.'):
                 annotations[key] = str(val).replace('typing.', '', 1)
-            print(val.__class__)
         if self.hint_types:
             return "%s%s %s" % (self.clean_prefix,
                                 command.qualified_name,

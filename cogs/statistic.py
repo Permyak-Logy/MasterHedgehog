@@ -30,7 +30,7 @@ class StatisticCog(Cog, name='Статистика'):
         """Показывает статистику по указанной категории"""
         await ctx.just_send_help()
 
-    @group_stats.command('guild')
+    @group_stats.command('guild', enabled=False)
     @commands.guild_only()
     async def cmd_stats_guild(self, ctx: Context):
         """
@@ -64,7 +64,7 @@ class StatisticCog(Cog, name='Статистика'):
 
         await ctx.send(embed=embed)
 
-    @group_stats.command('role')
+    @group_stats.command('role', enabled=False)
     @commands.guild_only()
     async def cmd_stats_role(self, ctx: Context, _: discord.Role):
         """

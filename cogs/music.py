@@ -151,7 +151,7 @@ class MusicCog(Cog, name='Музыка YouTube'):
             return
         await msg.remove_reaction(payload.emoji, payload.member)
 
-        if payload.member == self.bot.user:
+        if payload.member.bot:
             return
 
         voice_client: discord.VoiceClient = msg.guild.voice_client

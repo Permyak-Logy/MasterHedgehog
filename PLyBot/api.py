@@ -207,16 +207,15 @@ class AccessCog(Cog, name="Access Master Ёжа"):
             cog: Cog = self.bot.get_cog(name)
 
             elem = []
-
-            if await self.bot.is_owner(ctx.author):
-                config = cog.cls_config.__tablename__ if cog.cls_config else "Нет"
-                elem.append(f'конфиг={config}')
-
             if cog.cls_config is not None and hasattr(cog.cls_config, "active_until"):
                 date = cog.get_config(session, ctx.guild).active_until
             else:
                 date = None
             elem.append(f'активен{"=неограниченно" if date is None else f"_до={date}"}')
+
+            if await self.bot.is_owner(ctx.author):
+                config = cog.cls_config.__tablename__ if cog.cls_config else "Нет"
+                elem.append(f'конфиг={config}')
 
             text.append(f'{name.ljust(len(max(self.bot.cogs.keys(), key=len)), " ")} [{"; ".join(elem)}]')
 

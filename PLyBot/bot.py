@@ -27,7 +27,7 @@ logging = logging.getLogger(__name__)
 # TODO: Эмодзи успеха
 # TODO: Аватар
 # TODO: Ранговая система
-
+# TODO: Супер пользователь (Команды для управления только мной)
 class Bot(commands.Bot):
     def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
                  turn_on_api_server=False, **options):
@@ -297,13 +297,17 @@ class Bot(commands.Bot):
             else:
                 embed.add_field(name="Сообщение", value="Вам недоступна эта команда")
         elif isinstance(exception, commands.CommandNotFound):
-            embed.add_field(name="Сообщение", value="Команды '{}' не существует".format(ctx.invoked_with))
+            embed.add_field(name="Сообщение", value="Команды `{}{}` не существует".format(ctx.prefix, ctx.invoked_with))
         elif isinstance(exception, commands.CommandOnCooldown):
             embed.add_field(
                 name="Сообщение",
                 value=f"Погоди остынь! Повтори попытку через {HRF.time(timedelta(seconds=exception.retry_after))}"
             )
-
+        elif isinstance(exception, commands.DisabledCommand):
+            embed.add_field(
+                name="Сообщение",
+                value=f"Команда `{ctx.prefix}{ctx.command}` в данный момент выключена. В скором времени я её возобновлю"
+            )
         else:
             embed.add_field(name="Сообщение", value="Неизвестная ошибка")
             await super().on_command_error(ctx, exception)
@@ -316,7 +320,7 @@ class Bot(commands.Bot):
 
         if isinstance(exception, (commands.CommandNotFound, commands.CommandOnCooldown, commands.BadArgument)):
             await ctx.message.add_reaction('⚠️')
-        elif isinstance(exception, commands.CheckFailure):
+        elif isinstance(exception, (commands.CheckFailure, commands.DisabledCommand)):
             await ctx.message.add_reaction('🚫')
         else:
             await ctx.message.add_reaction('❌')
@@ -512,7 +516,7 @@ class Cog(commands.Cog, name="Без названия"):
             session: db_session.Session
 
             async def check_guild(guild_: discord.Guild) -> bool:
-                if Guild.get(session, guild_).ban_activity:
+                if Guild.get(session, guild_).ban_activity and not await ctx.bot.is_owner(ctx.author):
                     return False
                 if self.cls_config is not None:
                     config = self.update_config(session, guild_)

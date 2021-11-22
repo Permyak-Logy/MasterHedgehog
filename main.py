@@ -29,13 +29,15 @@ def main():
         command_prefix=bot_conf['command_prefix'],
         db_con=bot_conf['db_con'],
         owner_ids=CONFIG['admins'],
+        root_id=CONFIG['root'],
         activity=discord.Game(bot_conf['game_activity']),
         bot_name=bot_conf['bot_name'],
         turn_on_api_server=bot_conf.get('turn_on_api_server', False),
-        footer=("PyPLy © | Сделано в России! 👀", "https://bit.ly/3qVNENv"),
+        footer=("PyPLy © | Сделано в России! 👀",
+                "https://cdn.discordapp.com/avatars/403910550028943361/3e5168bf62228b8e3f3ac58da97b563b.webp"),
         help_command=HelpCommand(width=70),
         bot_type=TypeBot.both,
-        ignore_errors=(commands.CommandNotFound, ),
+        ignore_errors=(commands.CommandNotFound, commands.CheckFailure),
         permissions=8, version=("Beta 0.13", datetime.date(day=21, month=11, year=2021))
     )
 

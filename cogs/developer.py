@@ -8,6 +8,7 @@ from discord.ext import commands
 
 import db_session
 from PLyBot import Bot, Cog, ApiKey, join_string, Context
+from db_session.base import Guild
 from db_session.const import MIN_DATETIME
 
 activate_parser = argparse.ArgumentParser()
@@ -28,39 +29,38 @@ class DeveloperCog(Cog, name="Для разработчиков"):
     @_group_sudo.command(name='activate', aliases=['act'])
     @commands.is_owner()
     @commands.guild_only()
-    async def activate(self, ctx: Context, *, cog: str = "ALL"):
+    async def activate(self, ctx: Context, *, guild: discord.Guild = None):
         """
-        Активирует на бессрочное использование указанный модуль
+        Активирует на бессрочное использование всех модулей на сервере
         """
-        guild: discord.Guild = ctx.guild
-        cogs = list(filter(bool, map(self.bot.get_cog, self.bot.cogs))) if cog == "ALL" else [self.bot.get_cog(cog)]
-        assert cogs, "Не найден модуль"
+        guild: discord.Guild = guild or ctx.guild
+        cogs = list(filter(bool, map(self.bot.get_cog, self.bot.cogs)))
         activated = []
         with db_session.create_session() as session:
             for cog in cogs:
                 if not (isinstance(cog, Cog) and cog.cls_config is not None):
                     continue
-                config = cog.get_config(session, ctx.guild)
+                config = cog.get_config(session, guild)
                 if not hasattr(config, "active_until"):
                     continue
                 config.active_until = None
-                activated.append(cog.qualified_name)
+                activated.append(f"`{cog.qualified_name}`")
             session.commit()
-        activated = "\n\t".join(activated)
-        embed = discord.Embed(title="Успешно!", description=f'На сервере были успешно активированы модули:\n\t'
+        activated = " ".join(activated)
+        embed = discord.Embed(title="Успешно!", description=f'На сервере были успешно активированы модули:\n\n'
                                                             f'{activated}', colour=self.bot.colour_embeds)
         await ctx.send(embed=embed)
 
     @_group_sudo.command(aliases=['deact'])
     @commands.is_owner()
     @commands.guild_only()
-    async def deactivate(self, ctx: Context, *, cog: str = "ALL"):
+    async def deactivate(self, ctx: Context, *, guild: discord.Guild = None):
         """
         Деактивирует на бессрочное использование указанный модуль
         """
-        guild: discord.Guild = ctx.guild
-        cogs = list(filter(bool, map(self.bot.get_cog, self.bot.cogs))) if cog == "ALL" else [self.bot.get_cog(cog)]
-        assert cogs, "Не найден модуль"
+        guild: discord.Guild = guild or ctx.guild
+        cogs = list(filter(bool, map(self.bot.get_cog, self.bot.cogs)))
+
         activated = []
         with db_session.create_session() as session:
             for cog in cogs:
@@ -129,15 +129,78 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             await ctx.send(embed=embed)
 
     # TODO: Сделать бан гильдии, разбан гильдии, отправка сообщения пользователю, перезагрузка
-    @_group_sudo.command()
+    @_group_sudo.command('guild', aliase=['сервер'])
+    @commands.is_owner()
+    async def _group_guild(self, ctx: Context, guild: discord.Guild = None):
+        """Показывает техническую часть сервера"""
+        guild = guild or ctx.guild
+        assert guild, "Не указан сервер"
+
+        statuses = list(map(lambda m: m.status, guild.members))
+        types = list(map(lambda m: m.bot, guild.members))
+
+        embed = discord.Embed(
+            title=f"Информация о сервере {guild}", colour=self.bot.colour_embeds).set_thumbnail(url=guild.icon_url)
+        embed.add_field(name="Участники", value=f"\\👥 Всего: **{guild.member_count}**\n"
+                                                f"\\👤 Людей: **{types.count(False)}**\n"
+                                                f"\\🤖 Ботов: **{types.count(True)}**")
+
+        statuses_text = ""
+        count_online = statuses.count(discord.Status.online)
+        count_idle = statuses.count(discord.Status.idle)
+        count_dnd = statuses.count(discord.Status.dnd)
+        count_offline = statuses.count(discord.Status.offline)
+        if count_online:
+            statuses_text += f"\\🟢 В сети: **{count_online}**\n"
+        if count_idle:
+            statuses_text += f"\\🟠 Не активен: **{count_idle}**\n"
+        if count_dnd:
+            statuses_text += f"\\🔴 Не беспокоить: **{count_dnd}**\n"
+        if count_offline:
+            statuses_text += f"\\⚫ Не в сети: **{count_offline}**\n"
+        embed.add_field(name="По статусам:", value=statuses_text)
+
+        channels_text = f"\\💬 Всего: {guild.channels.__len__()}\n"
+        if guild.text_channels:
+            channels_text += f"**#** Текстовых: **{guild.text_channels.__len__()}**\n"
+        if guild.voice_channels:
+            channels_text += f"\\🔊 Голосовых: **{guild.voice_channels.__len__()}**\n"
+        if guild.stage_channels:
+            channels_text += f"\\📣 Stage: **{guild.stage_channels.__len__()}**\n"
+        embed.add_field(name="Каналы:", value=channels_text)
+
+        embed.add_field(name="Владелец", value=str(guild.owner))
+        embed.add_field(name="Уровень проверки:", value=str(guild.mfa_level or "Отсутствует"))
+        embed.add_field(name="Дата создания:", value=str(guild.created_at.date()))
+        with db_session.create_session() as session:
+            embed.add_field(name="Бан:", value="Есть" if Guild.get(session, guild).ban_activity else "Нет")
+        embed.set_footer(text=f"ID: {guild.id}")
+        await ctx.reply(embed=embed)
+
+    @_group_sudo.command('ban_guild')
     @commands.is_owner()
     async def ban_guild(self, ctx: Context, guild: discord.Guild = None):
-        pass
+        """Банит активность на указанном сервере"""
+        guild = guild or ctx.guild
+        assert guild, "Не указан сервер"
 
-    @_group_sudo.command()
+        with db_session.create_session() as session:
+            Guild.get(session, guild).ban_activity = True
+            session.commit()
+        await ctx.reply(f"Я успешно забанил сервер: {guild}")
+
+    @_group_sudo.command('unban_guild')
     @commands.is_owner()
     async def unban_guild(self, ctx: Context, guild: discord.Guild = None):
-        pass
+        """Разбанивает активность на указанном сервере"""
+
+        guild = guild or ctx.guild
+        assert guild, "Не указан сервер"
+
+        with db_session.create_session() as session:
+            Guild.get(session, guild).ban_activity = False
+            session.commit()
+        await ctx.reply(f"Я успешно разбанил сервер: {guild}")
 
     @_group_sudo.command(name="отпр", aliases=['send'])
     @commands.is_owner()

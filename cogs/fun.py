@@ -28,7 +28,6 @@ class FunConfig(SqlAlchemyBase, BaseConfigMix):
 
     guild_id = Column(Integer, ForeignKey('guilds.id'),
                       primary_key=True, nullable=False)
-    mute_role = Column(Integer, nullable=True, unique=True)
     access = Column(String, nullable=False, default='{}')
     active_until = Column(Date, nullable=True, default=MIN_DATETIME)
 
