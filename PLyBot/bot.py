@@ -31,7 +31,11 @@ logging = logging.getLogger(__name__)
 class Bot(commands.Bot):
     def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
                  turn_on_api_server=False, **options):
+        self.default_prefix = options['command_prefix']
+        options['command_prefix'] = self.prefix
+
         super().__init__(intents=options.pop("intents", discord.Intents.all()), **options)
+
         self.__db_connect = db_con
         self.__models = {}
         self.__blueprints = {}  # "/url_prefix": <class: blueprint>
@@ -72,6 +76,9 @@ class Bot(commands.Bot):
         else:
             self.flask_app = None
 
+        self.rebooted = options.pop('rebooted', False)
+        self.root_id = options.pop('root_id', None)
+
         logging.info(f'init bot {self.name} {self.version}')
 
     @property
@@ -102,7 +109,9 @@ class Bot(commands.Bot):
 
         if self.activity:
             await self.change_presence(activity=self.activity)
-
+        if self.rebooted:
+            await self.get_user(self.root_id).send(embed=discord.Embed(description="Я был успешно перезагружен"),
+                                                   delete_after=10)
         logging.info(f"Бот класса {self.__class__.__name__} готов к работе как \"{self.user}\"")
 
     async def on_resumed(self):
@@ -432,7 +441,16 @@ class Bot(commands.Bot):
                 response["cogs"][bp.cog.qualified_name] = url_rule
         return response
 
-    # TODO: Сделать получение уникального Prefix для каждого сервера
+    @staticmethod
+    async def prefix(self, message: discord.Message):
+        if not isinstance(message.guild, discord.Guild):
+            return self.default_prefix
+        if not self.using_db:
+            return self.default_prefix
+        with db_session.create_session() as session:
+            guild_data: Guild = Guild.get(session, message.guild)
+            prefix = guild_data.command_prefix
+            return prefix or self.default_prefix
 
     # Runner #####################################################
     def run(self, *args, **kwargs):

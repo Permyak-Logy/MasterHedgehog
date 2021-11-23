@@ -51,14 +51,13 @@ class HelpCommand(commands.MinimalHelpCommand):
             joined = '\u2002'.join(f'`{self.context.prefix}{str(c.name)}`' for c in commands_)
             self.paginator.add_line(
                 f'# ' + "{}%s ({}{} %s)".format(emoji + ' ' if emoji else '',
-                                                self.context.bot.command_prefix,
+                                                self.context.prefix,
                                                 self.context.bot.get_command("help")) % (heading, heading))
             self.paginator.add_line(joined)
 
     def add_subcommand_formatting(self, command):
         self.paginator.add_line(f"# " + "{}{} ({}{} {})".format(
-            self.context.bot.command_prefix,
-            command, self.context.bot.command_prefix, self.context.bot.get_command('help'), command))
+            self.context.prefix, command, self.context.prefix, self.context.bot.get_command('help'), command))
 
         if command.short_doc:
             # TODO: Сделать свой short_doc

@@ -2,7 +2,7 @@ from typing import Iterable
 
 import discord
 from sqlalchemy import orm
-from sqlalchemy import Column, ForeignKey,Integer, String, Boolean
+from sqlalchemy import Column, ForeignKey, Integer, String, Boolean
 import db_session
 from db_session import SqlAlchemyBase
 
@@ -15,6 +15,7 @@ class Guild(SqlAlchemyBase):
     name = Column(String, nullable=False)
 
     ban_activity = Column(Boolean, default=False)
+    command_prefix = Column(String, nullable=True, default=None)
 
     language_cmd = Column(String, default="ru")
     language_text = Column(String, default="en")

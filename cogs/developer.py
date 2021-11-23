@@ -1,6 +1,9 @@
 import argparse
 import asyncio
 import datetime
+import os
+import subprocess
+import sys
 
 import discord
 from discord.errors import Forbidden
@@ -28,12 +31,12 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
     @_group_sudo.command(name='activate', aliases=['act'])
     @commands.is_owner()
-    @commands.guild_only()
     async def activate(self, ctx: Context, *, guild: discord.Guild = None):
         """
         Активирует на бессрочное использование всех модулей на сервере
         """
         guild: discord.Guild = guild or ctx.guild
+        assert guild, "Не указан сервер"
         cogs = list(filter(bool, map(self.bot.get_cog, self.bot.cogs)))
         activated = []
         with db_session.create_session() as session:
@@ -46,19 +49,19 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                 config.active_until = None
                 activated.append(f"`{cog.qualified_name}`")
             session.commit()
-        activated = " ".join(activated)
+        activated = " | ".join(activated)
         embed = discord.Embed(title="Успешно!", description=f'На сервере были успешно активированы модули:\n\n'
                                                             f'{activated}', colour=self.bot.colour_embeds)
         await ctx.send(embed=embed)
 
     @_group_sudo.command(aliases=['deact'])
     @commands.is_owner()
-    @commands.guild_only()
     async def deactivate(self, ctx: Context, *, guild: discord.Guild = None):
         """
         Деактивирует на бессрочное использование указанный модуль
         """
         guild: discord.Guild = guild or ctx.guild
+        assert guild, "Не указан сервер"
         cogs = list(filter(bool, map(self.bot.get_cog, self.bot.cogs)))
 
         activated = []
@@ -70,10 +73,10 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                 if not hasattr(config, "active_until"):
                     continue
                 config.active_until = MIN_DATETIME
-                activated.append(cog.qualified_name)
+                activated.append(f'`{cog.qualified_name}`')
 
             session.commit()
-        activated = "\n\t".join(activated)
+        activated = " | ".join(activated)
         embed = discord.Embed(title="Успешно!", description=f'На сервере были успешно деактивированы модули:\n\t'
                                                             f'{activated}', colour=self.bot.colour_embeds)
         await ctx.send(embed=embed)
@@ -221,10 +224,16 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
     @_group_sudo.command(name="перезагрузка", aliases=['reboot'])
     @commands.is_owner()
-    async def reboot(self, ctx: Context):
+    async def reboot(self, ctx: Context, delay: int = 5):
         """
         Перезагружает систему бота
         """
+
+        await ctx.reply(embed=discord.Embed(description=f"Хорошо. Перезагрузка стартует в {delay} сек."))
+        subprocess.Popen([sys.executable, 'rebooter.py', str(delay), str(os.getpid())])
+        await asyncio.sleep(delay - 1)
+        self.bot.is_ready()
+        await self.bot.logout()
 
     @_group_sudo.command(name="отключение", aliases=['logout', 'exit', 'disconnect', 'close'])
     @commands.is_owner()

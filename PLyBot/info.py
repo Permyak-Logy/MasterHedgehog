@@ -4,6 +4,8 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+import db_session
+from db_session.base import Guild
 from .bot import Bot, Cog, Context
 from .const import ALL_GOOD_TYPES
 
@@ -28,7 +30,7 @@ class InfoCog(Cog, name="Информация"):
             await self.bot.get_command("info").invoke(await self.bot.get_context(message))
 
     @commands.command(name="инфо", aliases=["info", "i", "информация", "about"])
-    async def info(self, ctx: Context):
+    async def _cmd_info(self, ctx: Context):
         """
         Выдаёт информацию о боте
         """
@@ -40,11 +42,11 @@ class InfoCog(Cog, name="Информация"):
             description=(
                 f"Привет! Меня зовут {self.bot.name}! Я бот с огромным функционалом и разными возможностями.\n"
                 f"\n"
-                f"Мой префикс `{self.bot.command_prefix}`, но ты также можешь просто @обратиться ко мне. "
-                f"Взгляни на команду `{self.bot.command_prefix}{self.bot.get_command('help')}`"
+                f"Мой префикс `{ctx.prefix}`, но ты также можешь просто @обратиться ко мне. "
+                f"Взгляни на команду `{ctx.prefix}{self.bot.get_command('help')}`"
                 f"для более детальной информации о моих возможностях или просто после команды прописать '?'.\n"
-                f"||например `{self.bot.command_prefix}инфо ?` или `{self.bot.command_prefix}"
-                f"{self.bot.get_command('help')} инфо`||"
+                f"||например `{ctx.prefix}{self._cmd_info} ?` или `{ctx.prefix}"
+                f"{self.bot.get_command('help')} {self._cmd_info}`||"
             )
         )
         embed.add_field(name="Сборка", value=self.bot.version)
@@ -69,7 +71,7 @@ class InfoCog(Cog, name="Информация"):
                                             colour=self.bot.colour_embeds))
 
     @commands.command(name="пригласить", aliases=["invite"])
-    async def invite(self, ctx: Context):
+    async def _cmd_invite(self, ctx: Context):
         """
         Отправляет ссылку для приглашения бота
         """
@@ -79,6 +81,7 @@ class InfoCog(Cog, name="Информация"):
             colour=ctx.bot.colour_embeds).set_thumbnail(url=ctx.bot.user.avatar_url))
 
     @commands.command(name="сервер", aliases=['server'])
+    @commands.guild_only()
     async def _cmd_server(self, ctx: Context):
         """Показывает информацию о сервере: количество участников, владельца, уровень проверки и так далее."""
         guild = ctx.guild
@@ -129,7 +132,7 @@ class InfoCog(Cog, name="Информация"):
 
     # TODO: заглушено на время работ
     @commands.command(name="синтакс", aliases=["syntax"], enabled=False)
-    async def syntax(self, ctx: Context):
+    async def _cmd_syntax(self, ctx: Context):
         """
         Показывает сообщение
         """
@@ -143,7 +146,7 @@ class InfoCog(Cog, name="Информация"):
         await ctx.send(embed=embed)
 
     @commands.command(name="чексинтакс", aliases=["checksyntax"], enabled=False)
-    async def check_syntax(self, ctx: Context, *args: ALL_GOOD_TYPES):
+    async def _cmd_check_syntax(self, ctx: Context, *args: ALL_GOOD_TYPES):
         """
         Используйте эту команду для определения того что получит команда в качестве аргументов
         Проверить можно только первые 10 аргументов
@@ -161,8 +164,8 @@ class InfoCog(Cog, name="Информация"):
         await ctx.send(embed=embed)
 
     @commands.command(name="видят", aliases=['see'], enabled=False)
-    async def have_access(self, ctx: Context,
-                          channel: Union[discord.VoiceChannel, discord.TextChannel, discord.StageChannel]):
+    async def _cmd_have_access(self, ctx: Context,
+                               channel: Union[discord.VoiceChannel, discord.TextChannel, discord.StageChannel]):
         """
         Показывает участников которые видят указанный канал
         """
@@ -185,9 +188,28 @@ class InfoCog(Cog, name="Информация"):
         emb.add_field(name="Канал", value=channel.mention)
         await ctx.send(embed=emb)
 
-    @commands.command(name="префикс", aliases=['prefix'], enabled=False)
-    async def set_prefix(self, ctx: Context, prefix: str):
-        pass
+    @commands.group('prefix')
+    @commands.has_guild_permissions(administrator=True)
+    async def _group_prefix(self, ctx: commands.Context):
+        embed = discord.Embed(description=f"Префикс сервера: `{ctx.prefix}`",
+                              colour=self.bot.colour_embeds)
+        await ctx.reply(embed=embed)
+
+    @_group_prefix.command('set', enabled=False)
+    @commands.guild_only()
+    @commands.has_guild_permissions(administrator=True)
+    async def _cmd_prefix_set(self, ctx: commands.Context, new_prefix: str = None):
+        """Устанавливает новый префикс в гильдию"""
+        if not self.using_db:
+            raise commands.errors.DisabledCommand(
+                message="Команда выключена. Для доступа к ней включите базу данных в боте")
+        with db_session.create_session() as session:
+            guild_data = Guild.get(session, ctx.guild)
+            guild_data.command_prefix = new_prefix
+            session.commit()
+        embed = discord.Embed(description=f"Установлен новый префикс: `{new_prefix or self.bot.default_prefix}`",
+                              colour=self.bot.colour_embeds)
+        await ctx.reply(embed=embed)
 
 
 def setup(bot: Bot):

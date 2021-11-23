@@ -178,7 +178,7 @@ class FunCog(Cog, name="Веселье"):
             field[bomb[1]][bomb[0]] = "||:boom:||"
 
         map_sapper = "\n".join(map("".join, field))
-        await ctx.reply(embed=discord.Embed(title=f"Спёр {width}x{height} с {count} бомбами", description=map_sapper))
+        await ctx.reply(embed=discord.Embed(title=f"Сапёр {width}x{height} с {count} бомбами", description=map_sapper))
 
 
 def setup(bot: Bot):

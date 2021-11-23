@@ -87,6 +87,7 @@ class ActivityRanksCog(Cog, name="Ранги Активности"):
         await ctx.reply(embed=embed)
 
     @commands.command('квас', aliases=['kvass'])
+    @commands.guild_only()
     async def _cmd_kvass(self, ctx: Context, *members: discord.Member):
         """Даёт кружку кваса другом участникам указанным через пробел"""
 

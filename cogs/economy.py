@@ -161,6 +161,7 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.send(embed=embed)
 
     @commands.group('work', aliases=['работа'])
+    @commands.guild_only()
     async def _group_work(self, ctx: Context):
         """Команда для работы"""
         await ctx.just_send_help()
