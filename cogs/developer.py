@@ -18,6 +18,7 @@ activate_parser = argparse.ArgumentParser()
 activate_parser.add_argument('-A', action="store_true")
 
 
+# TODO: Вывод логов
 # TODO: Русифицировать команды
 class DeveloperCog(Cog, name="Для разработчиков"):
     def __init__(self, bot: Bot):

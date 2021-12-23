@@ -51,8 +51,8 @@ class HRF:
         m = 1 if number >= 0 else -1
         number = abs(number)
 
-        d = {1: "тыс.", 2: "млн", 3: "млрд", 4: "трлн", 5: "квдр", 6: "квнт", 7: "скст",
-             8: "септ", 9: "октл", 10: "ннл", 11: "дцл", 12: "aнд", 13: "ддц", 14: "трдц"}
+        d = {1: "тыс.", 2: "млн.", 3: "млрд.", 4: "трлн.", 5: "квдр.", 6: "квнт.", 7: "скст.",
+             8: "септ.", 9: "октл.", 10: "ннл.", 11: "дцл.", 12: "aнд.", 13: "ддц.", 14: "трдц."}
 
         for i in range(len(d.keys()), 0, -1):
             if number // (1000 ** i * 10) != 0:
@@ -90,9 +90,9 @@ class HRF:
 
         if small:
             if milliseconds:
-                result.append(f"{seconds} мс.")
+                result.append(f"{milliseconds} мс.")
             if microseconds:
-                result.append(f"{seconds} мкс.")
+                result.append(f"{microseconds} мкс.")
 
         return sep.join(result).strip()
 

@@ -82,10 +82,11 @@ class StatisticCog(Cog, name='Статистика'):
         embed.set_thumbnail(url=ctx.me.avatar_url)
         embed.add_field(name="Серверов под наблюдением", value=str(len(self.bot.guilds)))
         embed.add_field(name="Каналов под наблюдением", value=str(len(set(self.bot.get_all_channels()))))
-        embed.add_field(name="Людей под наблюдением", value=str(len(self.bot.users)))
+        embed.add_field(name="Людей под наблюдением", value="\\👥 " + str(len(self.bot.users)))
         embed.add_field(name="Выполнено команд", value=str(self.bot.count_invokes + 1))
 
-        embed.add_field(name="Возраст", value=HRF.time(datetime.now() - self.bot.user.created_at, sep="\n") or "-")
+        embed.add_field(name="Возраст",
+                        value=HRF.time(datetime.now() - self.bot.user.created_at, sep=" ", medium=False) or "-")
         embed.add_field(name="Работает", value=HRF.time(datetime.now() - self.bot.started) or "-")
 
         embed.add_field(name="Модулей", value=str(len(self.bot.cogs)))
