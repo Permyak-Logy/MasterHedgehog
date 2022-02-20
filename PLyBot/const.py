@@ -114,3 +114,14 @@ STATUS_ABOUT = {
 class HeadersApi:
     GUILD_ID = "guild-id"
     API_KEY = "api-key"
+
+
+class Types:
+    int = "int"
+    float = "float"
+    str = "str"
+    text_channel = "text_channel"
+    voice_channel = "voice_channel"
+    role_member = "role_member"
+    user = "user"
+

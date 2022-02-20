@@ -86,7 +86,7 @@ class AccessCog(Cog, name="Access Master Ёжа"):
             embed.add_field(name=key, value=str(val) + "*" * lvl)
 
     # TODO: Переделать поиск cog или command
-    @commands.command(name='доступ', aliases=['acc', 'access'])
+    @commands.command(name='доступ', aliases=['acc', 'access'], enabled=False)
     @commands.guild_only()
     async def get_access_cmd(self, ctx: commands.Context, name: str):
         """
@@ -110,7 +110,7 @@ class AccessCog(Cog, name="Access Master Ёжа"):
         await ctx.send("```json\n" + json.dumps(access, indent=4) + "\n```")
 
     # TODO: Подделать описания команд
-    @commands.command(name='устдоступ', aliases=['set_acc', 'setacc', 'set_access', '=acc'])
+    @commands.command(name='устдоступ', aliases=['set_acc', 'setacc', 'set_access', '=acc'], enabled=False)
     @commands.guild_only()
     async def set_access_cmd(self, ctx: commands.Context, name: str, attr: str = None, *args: int):
         """

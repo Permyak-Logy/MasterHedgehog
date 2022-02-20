@@ -98,7 +98,6 @@ class HRF:
 
     @staticmethod
     def full_time(time: datetime.timedelta, include_small_time=False) -> str:
-        # TODO: сделать с полными обозначениями
         return HRF.time(time, include_small_time)
 
     @staticmethod
@@ -123,12 +122,6 @@ class Permissions:
             raise TypeError(f'Передан неизвестный ключ {flags}')
 
         return flag
-
-
-class DBTools:
-    # TODO: Убрать!!!
-    # Некоторые манипуляции с бд о участниках серверов
-    pass
 
 
 def group(name=None, invoke_without_command=True, **attrs):

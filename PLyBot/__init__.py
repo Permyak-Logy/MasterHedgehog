@@ -1,6 +1,6 @@
-from .api import AccessCog, ApiKey, BaseApiBP
+from .api import AccessCog, ApiKey, BaseApiBP, JSON_STATUS
 from .bot import Bot, Cog, Context
-from .extra import Check, HRF, DBTools
+from .extra import Check, HRF
 from .extra import ONLINE, OFFLINE, IDLE, DND, INVISIBLE, T
 from .extra import equal, not_equal, not_in, in_
 from .extra import full_using_db, run_if_ready_db, plug_func, plug_afunc

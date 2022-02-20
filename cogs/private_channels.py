@@ -5,11 +5,11 @@ import discord
 import sqlalchemy
 from discord.ext import commands
 from flask import Blueprint, jsonify, request
-from PLyBot.const import HeadersApi
+
+from PLyBot.const import HeadersApi, Types
 import db_session
-from PLyBot import Bot, get_any
-from PLyBot import Cog
-from PLyBot import BaseApiBP
+from PLyBot import Bot, Cog, get_any
+from PLyBot import BaseApiBP, JSON_STATUS
 from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
 
 
@@ -135,12 +135,18 @@ class PrivateChannelsBP(BaseApiBP):
             config = session.query(PrivateChannelsConfig).filter(
                 PrivateChannelsConfig.guild_id == int(guild_id)).first()
             if not config:
-                return jsonify(error="bad config-id")
+                return JSON_STATUS(400, msg="bad guild-id")
             if request.method == 'GET':
                 channels = config.channels
-                return jsonify(ids=list(map(int, channels.split(';') if channels else [])))
+                return jsonify(value=list(map(int, channels.split(';') if channels else [])),
+                               type=Types.voice_channel,
+                               about=None,
+                               islist=True)
             elif request.method == 'POST':
-                return jsonify(status="ok post")
+                if "value" in request.json and isinstance(request.json['value'], list):
+                    channels = request.json  # TODO: Доделать
+                    return JSON_STATUS(202)
+                return JSON_STATUS(400)
 
 
 def setup(bot: Bot):

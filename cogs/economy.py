@@ -1026,10 +1026,10 @@ class EconomyCog(Cog, name='Экономика'):
             assert isinstance(code, PromoCode), "Недействительный код"
             assert not code.activated, "Код уже активирован"
 
-            member = DBEconomyTools.get_balance_member(session, ctx.author)
-            member.add_dep(code.moneys)
+            balance = DBEconomyTools.get_balance_member(session, ctx.author)
+            balance.add_dep(code.moneys)
             code.activated = True
-            code.by = member.id
+            code.by = ctx.author.id
             session.commit()
 
             await ctx.reply(embed=discord.Embed(title="Активирован промокод").add_field(
