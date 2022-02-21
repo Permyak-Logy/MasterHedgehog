@@ -4,7 +4,7 @@ from typing import Optional
 import discord
 from discord.ext import commands
 
-from PLyBot import Bot, Cog
+from PLyBot import Bot, Cog, BotEmbed
 
 
 class F:
@@ -40,8 +40,9 @@ class PythonConsoleCog(Cog, name='PyConsole'):
 
     @commands.command('eval', aliases=['ev'])
     @commands.is_owner()
-    async def _cmd_eval(self, ctx: commands.Context, inc_str: Optional[bool] = True, inc_repr: Optional[bool] = False, *,
-                       exp: str):
+    async def _cmd_eval(self, ctx: commands.Context, inc_str: Optional[bool] = True, inc_repr: Optional[bool] = False,
+                        *,
+                        exp: str):
         """
         ```python
         return eval(exp)```
@@ -56,7 +57,7 @@ class PythonConsoleCog(Cog, name='PyConsole'):
 
         result = eval(exp)
         exp = '```python\n' + exp.replace('`', '\\`') + '```'
-        embed = discord.Embed(title="Выполнена команда eval", description=exp, colour=self.bot.colour_embeds)
+        embed = BotEmbed(ctx=ctx, title="Выполнена команда eval", description=exp, colour=self.bot.colour)
         if inc_str:
             embed.add_field(name='str', value=str(result) or "<empty_string>")
         if inc_repr:
@@ -83,7 +84,7 @@ class PythonConsoleCog(Cog, name='PyConsole'):
 
         result = await eval(exp)
         exp = '```python\nawait ' + exp.replace('`', '\\`') + '```'
-        embed = discord.Embed(title="Выполнена команда await eval", description=exp, colour=self.bot.colour_embeds)
+        embed = BotEmbed(ctx=ctx, title="Выполнена команда await eval", description=exp, colour=self.bot.colour)
         if inc_result:
             embed.add_field(name='str', value=str(result))
             embed.add_field(name='repr', value=str(result))
@@ -115,8 +116,8 @@ class PythonConsoleCog(Cog, name='PyConsole'):
         exp = "\n".join(lines)
         exec(exp)
         exp = '```python\n' + exp.replace('`', '\\`') + '```'
-        embed = discord.Embed(title="Выполнена команда exec", description=exp,
-                              colour=self.bot.colour_embeds)
+        embed = BotEmbed(ctx=ctx, title="Выполнена команда exec", description=exp,
+                         colour=self.bot.colour)
         if __output__:
             embed.add_field(name='output', value=f'```python\n{__output__}```')
 

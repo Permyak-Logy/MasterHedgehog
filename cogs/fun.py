@@ -7,7 +7,7 @@ import pyttsx3
 from discord.ext import commands
 
 import db_session
-from PLyBot import Bot, Cog, Context
+from PLyBot import Bot, Cog, Context, BotEmbed
 from PLyBot.const import TEXT_EMOJI_NUMBERS
 from db_session.base import Message
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
@@ -56,7 +56,7 @@ class FunCog(Cog, name="Веселье"):
                     except Exception:
                         pass
                 session.commit()
-        await ctx.reply(embed=discord.Embed(description=f"Готово! Обновлено сообщений {count}"))
+        await ctx.reply(embed=BotEmbed(ctx=ctx, description=f"Готово! Обновлено сообщений {count}"))
 
     @commands.command(name="слово", aliases=["word", "w", "бред"])
     @commands.cooldown(1, 0.1 * 60, type=commands.BucketType.guild)
@@ -178,7 +178,7 @@ class FunCog(Cog, name="Веселье"):
             field[bomb[1]][bomb[0]] = "||:boom:||"
 
         map_sapper = "\n".join(map("".join, field))
-        await ctx.reply(embed=discord.Embed(title=f"Сапёр {width}x{height} с {count} бомбами", description=map_sapper))
+        await ctx.reply(embed=BotEmbed(ctx=ctx, title=f"Сапёр {width}x{height} с {count} бомбами", description=map_sapper))
 
 
 def setup(bot: Bot):

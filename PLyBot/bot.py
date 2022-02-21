@@ -16,6 +16,7 @@ from db_session.base import User, Member, Guild, Message
 from .enums import TypeBot
 from .extra import HRF, full_using_db, run_if_ready_db
 from .help import HelpCommand
+from discord_components import ComponentsBot
 
 # TODO: Загрузка внешней базы данных
 # TODO: Роли участников в отдельной таблице
@@ -27,7 +28,7 @@ logging = logging.getLogger(__name__)
 # TODO: Аватар
 # TODO: Ранговая система
 # TODO: Супер пользователь (Команды для управления только мной)
-class Bot(commands.Bot):
+class Bot(ComponentsBot):
     def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
                  turn_on_api_server=False, **options):
         self.default_prefix = options['command_prefix']
@@ -37,7 +38,7 @@ class Bot(commands.Bot):
 
         self.__db_connect = db_con
         self.__models = {}
-        self.__blueprints = {}  # "/url_prefix": <class: blueprint>
+        self.__blueprints = {}  # { "/<url_prefix>": <class: blueprint> }
         self.__cog_blueprints = {}
 
         if bot_type == TypeBot.self:
@@ -49,12 +50,14 @@ class Bot(commands.Bot):
         else:
             self._skip_check = lambda x, y: True
 
+        self.started = options.pop("started", datetime.now())
         self.name = options.pop("bot_name", self.__class__.__name__)
         self.version, self.build_date = options.pop("version", ("unknown", datetime.now()))
 
-        self.colour_embeds = options.pop("colour_embeds", discord.colour.Color.from_rgb(127, 127, 127))
         self.activity: discord.Activity = options.pop("activity", None)
-        self.started = options.pop("started", datetime.now())
+
+        self.footer: dict = options.pop("footer", None)
+        self.colour = options.pop("colour_embeds", discord.embeds.EmptyEmbed)
 
         self.__invite_link = options.pop("invite_link", None)
         self.permissions = options.pop("permissions", 0)
@@ -64,8 +67,6 @@ class Bot(commands.Bot):
         self.before_invoke(self.on_before_invoke)
 
         self.ignore_errors = options.pop("ignore_errors", tuple())
-
-        self.footer = options.pop("footer", None)
 
         self.__ready_db = False
         if turn_on_api_server:
@@ -242,7 +243,7 @@ class Bot(commands.Bot):
         embed = discord.Embed(
             title="Ошибка исполнения!",
             description="Что-то пошло не так",
-            colour=self.colour_embeds
+            colour=self.colour
         )
 
         if isinstance(exception, commands.MissingRequiredArgument):
@@ -449,7 +450,7 @@ class Bot(commands.Bot):
         with db_session.create_session() as session:
             guild_data: Guild = Guild.get(session, message.guild)
             prefix = guild_data.command_prefix
-            return prefix or self.default_prefix
+        return prefix or self.default_prefix
 
     # Runner #####################################################
     def run(self, *args, **kwargs):

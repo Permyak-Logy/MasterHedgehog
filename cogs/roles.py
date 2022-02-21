@@ -6,7 +6,7 @@ from discord.errors import NotFound, Forbidden
 from discord.ext import commands
 
 import db_session
-from PLyBot import Bot
+from PLyBot import Bot, BotEmbed
 from PLyBot import Cog, Context
 from PLyBot.const import EMOJI_NUMBERS
 from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
@@ -115,7 +115,7 @@ class RolesCog(Cog, name='Роли'):
 
     @commands.Cog.listener('on_ready')
     async def update_member_roles(self):
-        with db_session.create_session() as session:
+        with db_session.create_session() as _:
             pass
 
     @commands.Cog.listener('on_ready')
@@ -209,8 +209,8 @@ class RolesCog(Cog, name='Роли'):
                                                            Member.joined.is_(False)).all():
                     session.delete(member)
             session.commit()
-            await ctx.send(embed=discord.Embed(title="Успешно", colour=self.bot.colour_embeds,
-                                               description="Статус автоматической выдачи").add_field(
+            await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно", colour=self.bot.colour,
+                                          description="Статус автоматической выдачи").add_field(
                 name="Статус авто выдачи",
                 value="Вкл" if config.return_old_roles else "Выкл"))
 
@@ -230,11 +230,11 @@ class RolesCog(Cog, name='Роли'):
         description += "\nНажмите на реакцию для получения\n\n" + "\n".join(
             f"{EMOJI_NUMBERS[i + 1]} - {role.mention}" for i, role in enumerate(roles)
         )
-        embed = discord.Embed(
-            title=title,
-            description=description,
-            colour=self.bot.colour_embeds
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title=title,
+                         description=description,
+                         colour=self.bot.colour
+                         )
         message = await ctx.send(embed=embed)
         session = db_session.create_session()
         config = self.get_config(session, ctx.guild)
@@ -262,16 +262,16 @@ class RolesCog(Cog, name='Роли'):
         config = self.get_config(session, ctx.guild)
         roles = config.get_roles(ctx.bot)
         if not roles:
-            embed = discord.Embed(title="Нет доступных ролей",
-                                  description=f'Чтобы установить список ролей воспользуйтесь '
-                                              f'командой `{self.bot.command_prefix}'
-                                              f'{self.bot.get_command("set_roles")}`',
-                                  colour=self.bot.colour_embeds)
+            embed = BotEmbed(ctx=ctx, title="Нет доступных ролей",
+                             description=f'Чтобы установить список ролей воспользуйтесь '
+                                         f'командой `{ctx.prefix}'
+                                         f'{self.bot.get_command("set_roles")}`',
+                             colour=self.bot.colour)
             await ctx.send(embed=embed)
         else:
-            embed = discord.Embed(title="Список выдаваемых ролей",
-                                  description="\n".join(role.mention for role in roles),
-                                  colour=self.bot.colour_embeds)
+            embed = BotEmbed(ctx=ctx, title="Список выдаваемых ролей",
+                             description="\n".join(role.mention for role in roles),
+                             colour=self.bot.colour)
             await ctx.send(embed=embed)
 
     @commands.command(name='=роли', aliases=['=roles', 'setroles', 'set_roles'])
@@ -288,12 +288,12 @@ class RolesCog(Cog, name='Роли'):
         session.commit()
         session.close()
 
-        embed = discord.Embed(
-            title="Список ролей обновлён!",
-            description=f"Для получения списка доступных ролей введите "
-                        f"`{self.bot.command_prefix}{self.bot.get_command('roles')}`",
-            colour=self.bot.colour_embeds
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title="Список ролей обновлён!",
+                         description=f"Для получения списка доступных ролей введите "
+                                     f"`{ctx.prefix}{self.bot.get_command('roles')}`",
+                         colour=self.bot.colour
+                         )
         await ctx.send(embed=embed)
 
     @commands.command(name='+роли', aliases=['+roles', 'addroles', 'add_roles'])
@@ -315,8 +315,9 @@ class RolesCog(Cog, name='Роли'):
             assert role < ctx.guild.get_member(self.bot.user.id).top_role, \
                 f"Я не могу выдать роль '{role}', т.к. она выше чем я"
         await ctx.author.add_roles(*roles)
-        await ctx.send(embed=discord.Embed(title="Успешно", description=f"Вам успешно выдано {len(set(roles))} ролей",
-                                           colour=self.bot.colour_embeds))
+        await ctx.send(
+            embed=BotEmbed(ctx=ctx, title="Успешно", description=f"Вам успешно выдано {len(set(roles))} ролей",
+                           colour=self.bot.colour))
 
     @commands.command(name='-роли', aliases=['-roles', 'rmroles', 'rm_roles'])
     @commands.guild_only()
@@ -337,9 +338,9 @@ class RolesCog(Cog, name='Роли'):
             assert role < ctx.guild.get_member(self.bot.user.id).top_role, \
                 f"Я не могу снять роль {role}, т.к. она выше чем я"
         await ctx.author.remove_roles(*roles)
-        await ctx.send(embed=discord.Embed(title="Успешно",
-                                           description=f"У вас успешно убрано {len(set(roles))} ролей",
-                                           colour=self.bot.colour_embeds))
+        await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно",
+                                      description=f"У вас успешно убрано {len(set(roles))} ролей",
+                                      colour=self.bot.colour))
 
     @commands.command(name='+роли_всем', aliases=['+roles_all'])
     @commands.guild_only()
@@ -356,9 +357,9 @@ class RolesCog(Cog, name='Роли'):
             for member in ctx.guild.members:
                 member: discord.Member
                 await member.add_roles(*roles)
-        await ctx.send(embed=discord.Embed(title="Успешно",
-                                           description=f"Всем участникам были выданы роли",
-                                           colour=self.bot.colour_embeds))
+        await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно",
+                                      description=f"Всем участникам были выданы роли",
+                                      colour=self.bot.colour))
 
     @commands.command(name='-роли_всем', aliases=['-roles_all'])
     @commands.guild_only()
@@ -375,9 +376,9 @@ class RolesCog(Cog, name='Роли'):
             for member in ctx.guild.members:
                 member: discord.Member
                 await member.remove_roles(*roles)
-        await ctx.send(embed=discord.Embed(title="Успешно",
-                                           description=f"У всех участников были сняты роли",
-                                           colour=self.bot.colour_embeds))
+        await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно",
+                                      description=f"У всех участников были сняты роли",
+                                      colour=self.bot.colour))
 
     @commands.command(name='-роли_всем_искл', aliases=['-roles_all_exc'])
     @commands.guild_only()
@@ -399,9 +400,9 @@ class RolesCog(Cog, name='Роли'):
                     map(get_id, roles))
                 if not result:
                     await member.remove_roles(*roles)
-        await ctx.send(embed=discord.Embed(title="Успешно",
-                                           description=f"У всех участников были сняты роли",
-                                           colour=self.bot.colour_embeds))
+        await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно",
+                                      description=f"У всех участников были сняты роли",
+                                      colour=self.bot.colour))
 
     @commands.group(name='auto_roles')
     @commands.guild_only()

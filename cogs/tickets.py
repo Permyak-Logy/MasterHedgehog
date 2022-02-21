@@ -6,7 +6,7 @@ from discord.errors import NotFound
 from discord.ext import commands
 
 import db_session
-from PLyBot import Bot, Cog
+from PLyBot import Bot, Cog, BotEmbed
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 
 
@@ -79,11 +79,11 @@ class TicketsCog(Cog, name='Билеты'):
             ts.category = category.id
 
             # Создание контролирующей реакции
-            message = await ctx.send(embed=discord.Embed(
-                title=f"**{name}**",
-                description='Для создания билета нажмите 📩',
-                colour=self.bot.colour_embeds
-            ))
+            message = await ctx.send(embed=BotEmbed(ctx=ctx,
+                                                    title=f"**{name}**",
+                                                    description='Для создания билета нажмите 📩',
+                                                    colour=self.bot.colour
+                                                    ))
             await message.add_reaction('📩')
             ts.ctrl_msg = message.id
 
@@ -156,10 +156,9 @@ class TicketsCog(Cog, name='Билеты'):
                     ts.channel = channel.id
 
                     message = await channel.send(f"{author.mention} Здравствуй!",
-                                                 embed=discord.Embed(
-                                                     description="Какова причина твоего визита?\n"
-                                                                 "Чтобы закрыть билет - 🔒",
-                                                     colour=self.bot.colour_embeds))
+                                                 embed=BotEmbed(description="Какова причина твоего визита?\n"
+                                                                            "Чтобы закрыть билет - 🔒",
+                                                                colour=self.bot.colour))
                     await message.add_reaction('🔒')
 
                     ts.author = author.id

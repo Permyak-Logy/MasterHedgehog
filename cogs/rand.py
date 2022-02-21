@@ -1,10 +1,9 @@
 import random
 
-import discord
 import sqlalchemy
 from discord.ext import commands
 
-from PLyBot import Bot, Cog
+from PLyBot import Bot, Cog, BotEmbed
 from PLyBot.const import EMOJI_NUMBERS
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 
@@ -107,7 +106,7 @@ class RandomCog(Cog, name='Случайности'):
         total = sum(results)
         results = list(map(EMOJI_NUMBERS.get, results))
         await ctx.reply(
-            embed=discord.Embed(description=" + ".join(results) + f" = {total}", colour=self.bot.colour_embeds))
+            embed=BotEmbed(ctx=ctx, description=" + ".join(results) + f" = {total}", colour=self.bot.colour))
 
 
 def setup(bot: Bot):

@@ -8,7 +8,7 @@ from discord.ext import commands
 
 import db_session
 from PLyBot import Bot
-from PLyBot import Cog, join_string, get_time_from_string
+from PLyBot import Cog, join_string, get_time_from_string, BotEmbed
 from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
 from db_session.base import Member
 
@@ -81,12 +81,12 @@ class ModerationCog(Cog, name="Модерация"):
 
         await guild.ban(user=member, reason=reason)
 
-        embed = discord.Embed(
-            title="Операция успешна",
-            colour=discord.colour.Color.from_rgb(0, 255, 0),
-            description=f"Участник {member.mention} был забанен по причине \"{reason}\" "
-                        f"{'навсегда' if time == 'F' else f'на {time}'}"
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title="Операция успешна",
+                         colour=discord.colour.Color.from_rgb(0, 255, 0),
+                         description=f"Участник {member.mention} был забанен по причине \"{reason}\" "
+                                     f"{'навсегда' if time == 'F' else f'на {time}'}"
+                         )
         await ctx.send(embed=embed)
 
         if seconds > 0:
@@ -117,11 +117,11 @@ class ModerationCog(Cog, name="Модерация"):
 
         await guild.unban(user=member, reason=reason)
 
-        embed = discord.Embed(
-            title="Операция успешна",
-            colour=discord.colour.Color.from_rgb(0, 255, 0),
-            description=f"Участник {member.mention} был разбанен по причине \"{reason}\""
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title="Операция успешна",
+                         colour=discord.colour.Color.from_rgb(0, 255, 0),
+                         description=f"Участник {member.mention} был разбанен по причине \"{reason}\""
+                         )
         await ctx.send(embed=embed)
 
     @commands.command(name='кикнуть', aliases=['kick', 'кик', 'пнуть', 'выпнуть'])
@@ -145,11 +145,11 @@ class ModerationCog(Cog, name="Модерация"):
 
         await ctx.guild.kick(user=member, reason=reason)
 
-        embed = discord.Embed(
-            title="Операция успешна",
-            colour=discord.colour.Color.from_rgb(0, 255, 0),
-            description=f"Участник {member.mention} был исключён по причине \"{reason}\""
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title="Операция успешна",
+                         colour=discord.colour.Color.from_rgb(0, 255, 0),
+                         description=f"Участник {member.mention} был исключён по причине \"{reason}\""
+                         )
         await ctx.send(embed=embed)
 
     # TODO: Возможность послать ^C для остановки
@@ -175,14 +175,14 @@ class ModerationCog(Cog, name="Модерация"):
             assert limit is None or limit >= 0, "Указанный лимит должен быть >= 0  (или == -1)"
             await ctx.channel.purge(limit=limit, check=check)
 
-            embed = discord.Embed(
-                title="Операция успешна",
-                colour=discord.colour.Color.from_rgb(0, 255, 0),
-                description=(
-                    f"Очищено не более {limit} сообщений в канале {ctx.channel.mention}"
-                    if isinstance(limit, int) else
-                    f"Очищены все сообщения в канале {ctx.channel.mention}"
-                ))
+            embed = BotEmbed(ctx=ctx,
+                             title="Операция успешна",
+                             colour=discord.colour.Color.from_rgb(0, 255, 0),
+                             description=(
+                                 f"Очищено не более {limit} сообщений в канале {ctx.channel.mention}"
+                                 if isinstance(limit, int) else
+                                 f"Очищены все сообщения в канале {ctx.channel.mention}"
+                             ))
 
         await ctx.send(embed=embed, delete_after=10)
 
@@ -200,17 +200,17 @@ class ModerationCog(Cog, name="Модерация"):
         if ctx.guild.owner != ctx.author != self.bot.user:
             assert ctx.author.top_role > member.top_role, "Вы можете так делать только с людьми ниже вас"
 
-        await member.send(embed=discord.Embed(
-            title="Предупреждение",
-            description=f"Вам было сделано предупреждение по причине \"{reason}\""
-                        f"на сервере {ctx.guild}"
-        ))
+        await member.send(embed=BotEmbed(ctx=ctx,
+                                         title="Предупреждение",
+                                         description=f"Вам было сделано предупреждение по причине \"{reason}\""
+                                                     f"на сервере {ctx.guild}"
+                                         ))
 
-        embed = discord.Embed(
-            title="Операция успешна",
-            colour=discord.colour.Color.from_rgb(0, 255, 0),
-            description=f"Участник {member.mention} был предупреждён по причине \"{reason}\""
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title="Операция успешна",
+                         colour=discord.colour.Color.from_rgb(0, 255, 0),
+                         description=f"Участник {member.mention} был предупреждён по причине \"{reason}\""
+                         )
 
         await ctx.send(embed=embed)
 
@@ -221,10 +221,10 @@ class ModerationCog(Cog, name="Модерация"):
         if not user:
             user = ctx.author
 
-        embed = discord.Embed(title=f"Пользователь: \""
-                                    f"{user.display_name if user.id != 403910550028943361 else 'Не твоё дело'}\"",
-                              colour=discord.Color.from_rgb(0, 255, 0),
-                              description="Запрос на данные о пользователе")
+        embed = BotEmbed(ctx=ctx, title=f"Пользователь: \""
+                                        f"{user.display_name if user.id != 403910550028943361 else 'Не твоё дело'}\"",
+                         colour=discord.Color.from_rgb(0, 255, 0),
+                         description="Запрос на данные о пользователе")
         embed.set_thumbnail(url=user.avatar_url)
 
         embed.add_field(name="Никнейм", value=(user.name if user.id != 403910550028943361 else "*#^@ERROR7^@#"))
@@ -283,12 +283,12 @@ class ModerationCog(Cog, name="Модерация"):
 
         await member.add_roles(role, reason=reason)
 
-        embed = discord.Embed(
-            title="Операция успешна",
-            colour=discord.colour.Color.from_rgb(0, 255, 0),
-            description=f"Участник {member.mention} был замьючен по причине \"{reason}\" "
-                        f"{'навсегда' if time == 'F' else f'на {time}'}"
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title="Операция успешна",
+                         colour=discord.colour.Color.from_rgb(0, 255, 0),
+                         description=f"Участник {member.mention} был замьючен по причине \"{reason}\" "
+                                     f"{'навсегда' if time == 'F' else f'на {time}'}"
+                         )
         await ctx.send(embed=embed)
         if time != "F":
             await asyncio.sleep(seconds)
@@ -323,11 +323,11 @@ class ModerationCog(Cog, name="Модерация"):
 
         await member.remove_roles(role, reason=reason)
 
-        embed = discord.Embed(
-            title="Операция успешна",
-            colour=discord.colour.Color.from_rgb(0, 255, 0),
-            description=f"Участник {member.mention} был размьючен по причине \"{reason}\""
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title="Операция успешна",
+                         colour=discord.colour.Color.from_rgb(0, 255, 0),
+                         description=f"Участник {member.mention} был размьючен по причине \"{reason}\""
+                         )
         await ctx.send(embed=embed)
 
     @commands.command(name='мьютроль', aliases=['muterole', 'мутроль'])
@@ -343,10 +343,10 @@ class ModerationCog(Cog, name="Модерация"):
         session.commit()
         session.close()
         if role is not None:
-            await ctx.send(embed=discord.Embed(title="Успешно!",
-                                               description=f"Роль {role} установленна как\"Мьют роль\" "))
+            await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно!",
+                                          description=f"Роль {role} установленна как\"Мьют роль\" "))
         else:
-            await ctx.send(embed=discord.Embed(title="Успешно!", description=f"Роль для мьюта сброшена"))
+            await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно!", description=f"Роль для мьюта сброшена"))
 
 
 def setup(bot: Bot):

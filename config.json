@@ -4,16 +4,23 @@
     "db_con": "sqlite:///db/mht.sqlite?check_same_thread=False",
     "game_activity": "кустики",
     "bot_name": "Ёжа",
-    "turn_on_api_server": false
+    "turn_on_api_server": false,
+    "permissions": 8,
+    "footer": {
+      "text": "PyPLy © | Сделано в России! 👀",
+      "icon_url": "https://cdn.discordapp.com/avatars/403910550028943361/f9d64379c75cd44ed37ce6951173264b.webp"
+    }
   },
-  "root": 403910550028943361,
-  "admins": [
-    403910550028943361,
-    548412818991349780,
-    832894974227251240,
-    510033548422545411,
-    576037038042775563
-  ],
+  "users": {
+    "root": 403910550028943361,
+    "admins": [
+      403910550028943361,
+      548412818991349780,
+      832894974227251240,
+      510033548422545411,
+      576037038042775563
+    ]
+  },
   "logging": {
     "format": "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
     "output": {

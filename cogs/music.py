@@ -5,7 +5,7 @@ import sqlalchemy
 import youtube_dl
 
 from discord.ext import commands
-from PLyBot import Bot, Cog, Context
+from PLyBot import Bot, Cog, Context, BotEmbed
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 
 
@@ -104,11 +104,11 @@ class MusicCog(Cog, name='Музыка YouTube'):
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
             ctx.voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
 
-        emb = discord.Embed(
-            title='Муз плейер',
-            description=f'**Играет:** {player.title}',
-            colour=self.bot.colour_embeds
-        )
+        emb = BotEmbed(ctx=ctx,
+                       title='Муз плейер',
+                       description=f'**Играет:** {player.title}',
+                       colour=self.bot.colour
+                       )
         emb.add_field(
             name='Статус', value='🟢 Играет').add_field(
             name="Громкость", value=str(round(ctx.voice_client.source.volume * 100)) + "%")

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional, List
 from typing import Union
 
@@ -8,9 +9,10 @@ from flask import Blueprint, jsonify, request
 
 from PLyBot.const import HeadersApi, Types
 import db_session
-from PLyBot import Bot, Cog, get_any
+from PLyBot import Bot, Cog, Context, get_any, BotEmbed
 from PLyBot import BaseApiBP, JSON_STATUS
 from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
+from discord_components import Select, SelectOption, Interaction
 
 
 class PrivateChannelsConfig(SqlAlchemyBase, BaseConfigMix):
@@ -62,25 +64,61 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
                    guild: Union[discord.Guild, int]) -> Optional[PrivateChannelsConfig]:
         return super().get_config(session, guild)
 
-    @commands.command(name='привканал', aliases=['set_pcc', 'private_channel'])
+    @commands.command(name='привканал', aliases=['pcc', 'private_channel'])
     @commands.guild_only()
-    async def _cmd_set_private_channel_creator(self, ctx: commands.Context, *channels: discord.VoiceChannel):
+    async def _cmd_private_channel_creator(self, ctx: Context):
         """
-        Устанавливает канал как канал который создаёт приватные каналы. Если ничего не указать то будет сброшен.
+        Отправляет сообщение для контроля приватных каналов
         """
         with db_session.create_session() as session:
             config = self.get_config(session, ctx.guild)
-            config.set_channels(*channels)
-            session.commit()
-        chls_str = ", ".join(str(channel) for channel in channels)
+            old_channels = config.get_channels(self.bot)
 
-        embed = discord.Embed(
-            title="Успешно!",
-            colour=self.bot.colour_embeds,
-            description=f'Каналы "{chls_str}" установлен как канал для добавления приватных каналов'
-        )
+        custom_id = f"_cmd_pcc_{ctx.message.id}"
+        msg: discord.Message = await ctx.reply(
+            embed=BotEmbed(ctx=ctx, 
+                title="Настройка приватных каналов",
+                description="Выберите голосовые каналы, "
+                            "которые будут установлены "
+                            "как каналы для создания приватных голосовых каналов",
+                colour=self.bot.colour).set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url),
+            components=[Select(
+                placeholder="Выбери каналы!",
+                options=[
+                    SelectOption(label=channel.name,
+                                 value=channel.id,
+                                 emoji="🔊",
+                                 description=f"id: {channel.id}" + (f" категория: {channel.category}" if channel.category else ""),
+                                 default=channel in old_channels)
+                    for channel in ctx.guild.voice_channels],
+                min_values=0,
+                max_values=len(ctx.guild.voice_channels),
+                custom_id=custom_id)
+            ])
+        try:
+            interaction: Interaction = await self.bot.wait_for(
+                "select_option", check=lambda inter: inter.custom_id == custom_id and inter.user == ctx.author,
+                timeout=5 * 60
+            )
+        except asyncio.TimeoutError:
+            pass
+        else:
+            new_channels = list(map(ctx.guild.get_channel, map(int, interaction.values)))
+            with db_session.create_session() as session:
+                config = self.get_config(session, ctx.guild)
+                config.set_channels(*new_channels)
+                session.commit()
 
-        await ctx.send(embed=embed)
+            embed = BotEmbed(ctx=ctx, 
+                title="Успешно!",
+                colour=self.bot.colour,
+                description=(f'Установлены приватные каналы:\n' + "\n".join(f"\\🔊 {channel}" for channel in new_channels)
+                             if new_channels else "Убраны все голосовые каналы для создания приватных каналов")
+            )
+
+            await interaction.send(embed=embed, ephemeral=False, delete_after=60)
+        finally:
+            await msg.delete()
 
     @commands.Cog.listener('on_voice_state_update')
     async def handle_private_channels(self, member: discord.Member, _, after: discord.VoiceClient):

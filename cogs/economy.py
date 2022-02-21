@@ -11,7 +11,7 @@ from discord.ext import commands
 from discord.ext.commands import BucketType
 
 import db_session
-from PLyBot import Bot, Cog, join_string, HRF, Context
+from PLyBot import Bot, Cog, join_string, HRF, Context, BotEmbed
 from PLyBot.const import EMOJI_NUMBERS
 from db_session import BaseConfigMix, SqlAlchemyBase, bigint, MIN_DATETIME, Session
 
@@ -149,11 +149,11 @@ class EconomyCog(Cog, name='Экономика'):
             config: EconomyConfig = self.get_config(session, guild=ctx.guild)
             phrase, money, color = data[self.random(chance)]
 
-            embed = discord.Embed(
-                title=title,
-                description=phrase + f" {'+' if money > 0 else ''}{money} {config.currency_name}",
-                colour=color
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title=title,
+                             description=phrase + f" {'+' if money > 0 else ''}{money} {config.currency_name}",
+                             colour=color
+                             )
 
             member = DBEconomyTools.get_balance_member(session, ctx.author)
             member.add_cash(money)
@@ -359,7 +359,7 @@ class EconomyCog(Cog, name='Экономика'):
                 op_data.add_dep(money)
 
             session.commit()
-            await ctx.send(embed=discord.Embed(**embed_data))
+            await ctx.send(embed=BotEmbed(ctx=ctx, **embed_data))
 
     @commands.command('casino')
     @commands.guild_only()
@@ -409,21 +409,24 @@ class EconomyCog(Cog, name='Экономика'):
                 embed = None
                 for chance, sum_money, name, image_url in big_wins:
                     if rate <= chance and win_money >= sum_money:
-                        embed = discord.Embed(
-                            description=f'Ты получил {name} {win_money} {config.currency_icon} (+ {win_money - money})',
-                            colour=discord.Colour.from_rgb(0, 250, 0))
+                        embed = BotEmbed(ctx=ctx,
+                                         description=f'Ты получил {name} {win_money} {config.currency_icon} '
+                                                     f'(+ {win_money - money})',
+                                         colour=discord.Colour.from_rgb(0, 250, 0))
                         embed.set_image(url=image_url)
                         break
 
                 if not embed:
-                    embed = discord.Embed(
-                        title=random.choice(['Ура, удача!', 'Ты победил!', 'Пополнение счёта успешно!']),
-                        description=f'Ты получаешь {win_money} {config.currency_name} (+ {win_money - money})',
-                        colour=discord.Colour.from_rgb(0, 200, 0))
+                    embed = BotEmbed(ctx=ctx,
+                                     title=random.choice(['Ура, удача!', 'Ты победил!', 'Пополнение счёта успешно!']),
+                                     description=f'Ты получаешь {win_money} '
+                                                 f'{config.currency_name} (+ {win_money - money})',
+                                     colour=discord.Colour.from_rgb(0, 200, 0))
             else:
-                embed = discord.Embed(title=random.choice(['Понимаю', 'Повезёт в другой раз...', 'Неудача', 'Fail']),
-                                      description=f"ты ничего не получил ({-money})",
-                                      colour=discord.Colour.from_rgb(255, 0, 0))
+                embed = BotEmbed(ctx=ctx,
+                                 title=random.choice(['Понимаю', 'Повезёт в другой раз...', 'Неудача', 'Fail']),
+                                 description=f"ты ничего не получил ({-money})",
+                                 colour=discord.Colour.from_rgb(255, 0, 0))
             session.commit()
 
         await ctx.reply(embed=embed)
@@ -448,7 +451,7 @@ class EconomyCog(Cog, name='Экономика'):
             total = sum(balances)
             count = len(balances)
 
-            embed = discord.Embed(title="Данные о банке")
+            embed = BotEmbed(ctx=ctx, title="Данные о банке")
             embed.add_field(name="Всего в банке", value=f'{HRF.number(total)} {config.currency_icon}')
             embed.add_field(name='Непустых ячеек', value=str(count))
             embed.add_field(name='В среднем',
@@ -481,27 +484,27 @@ class EconomyCog(Cog, name='Экономика'):
             member = DBEconomyTools.get_balance_member(session, ctx.author)
             if success:
                 member.add_cash(1000)
-                embed = discord.Embed(
-                    title="Успех",
-                    description=f"Ты молодец. Сколько-то награбил, но нечаянно посеял всё на улице. "
-                                f"Жди обновы, но пока держи 1000 {config.currency_icon}!",
-                    colour=discord.Colour.from_rgb(0, 255, 0)
-                )
+                embed = BotEmbed(ctx=ctx,
+                                 title="Успех",
+                                 description=f"Ты молодец. Сколько-то награбил, но нечаянно посеял всё на улице. "
+                                             f"Жди обновы, но пока держи 1000 {config.currency_icon}!",
+                                 colour=discord.Colour.from_rgb(0, 255, 0)
+                                 )
             else:
 
                 member.set_dep(int(- total_dep * 0.1))
 
-                embed = discord.Embed(
-                    title="Провал",
-                    description=f"К сожалению вам не удалось ограбить банк.\n"
-                                f"Вы теперь должны заплатить: {member.dep} {config.currency_icon}",
-                    colour=discord.Colour.from_rgb(255, 0, 0)
-                )
+                embed = BotEmbed(ctx=ctx,
+                                 title="Провал",
+                                 description=f"К сожалению вам не удалось ограбить банк.\n"
+                                             f"Вы теперь должны заплатить: {member.dep} {config.currency_icon}",
+                                 colour=discord.Colour.from_rgb(255, 0, 0)
+                                 )
             session.commit()
             await ctx.reply(embed=embed)
 
     # =======================================================================================================
-    async def change_bal(self, member: discord.Member, value: int, a: int, where) -> discord.Embed:
+    async def change_bal(self, ctx: Context, member: discord.Member, value: int, a: int, where) -> BotEmbed:
         assert value >= 0, "Value должно быть >= 0"
         assert where in ["dep", "cash"], "where принимает значения только 'dep' и 'cash'"
         with db_session.create_session() as session:
@@ -510,10 +513,11 @@ class EconomyCog(Cog, name='Экономика'):
             config = self.get_config(session, member.guild)
             member_data = DBEconomyTools.get_balance_member(session, member)
 
-            embed = discord.Embed(
-                title="Изменение баланса",
-                description=f"{'Зачислено' if a > 0 else 'Снято'} {HRF.number(value)} {config.currency_name}"
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title="Изменение баланса",
+                             description=f"{'Зачислено' if a > 0 else 'Снято'} "
+                                         f"{HRF.number(value)} {config.currency_name}"
+                             )
             embed.set_author(name=member.display_name, icon_url=member.avatar_url)
             embed.add_field(name="Было", value=f"{HRF.number(member_data.get_total())} "
                                                f"{config.currency_icon}")
@@ -539,11 +543,8 @@ class EconomyCog(Cog, name='Экономика'):
             data = DBEconomyTools.get_balance_member(session, member)
             config = self.get_config(session, ctx.guild)
 
-            embed = discord.Embed(
-                title=f"Баланс (в {config.currency_name})"
-            )
-
-            embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+            embed = BotEmbed(ctx=ctx, title=f"Баланс на сервере", description=f"Счёт {member.mention}")
+            embed.set_thumbnail(url=member.avatar_url)
             embed.add_field(name="Кошелёк", value=f"{HRF.number(data.cash)} {config.currency_icon}")
             embed.add_field(name="Банк", value=f"{HRF.number(data.dep)} {config.currency_icon}")
             embed.add_field(name="Всего", value=f"{HRF.number(data.get_total())} {config.currency_icon}")
@@ -571,10 +572,10 @@ class EconomyCog(Cog, name='Экономика'):
             me_data.add_cash(-value)
             me_data.add_dep(value)
 
-            embed = discord.Embed(
-                title="Перевод",
-                description=f"В банк зачислено {HRF.number(value)} {config.currency_name}"
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title="Перевод",
+                             description=f"В банк зачислено {HRF.number(value)} {config.currency_name}"
+                             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
             embed.add_field(name="Осталось налички",
                             value=f"{HRF.number(me_data.cash)} {config.currency_icon}")
@@ -602,10 +603,10 @@ class EconomyCog(Cog, name='Экономика'):
             me_data.add_dep(-value)
             me_data.add_cash(value)
 
-            embed = discord.Embed(
-                title="Перевод",
-                description=f"В банке снято {HRF.number(value)} {config.currency_name}"
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title="Перевод",
+                             description=f"В банке снято {HRF.number(value)} {config.currency_name}"
+                             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
             embed.add_field(name="Осталось в банке",
                             value=f"{HRF.number(me_data.dep)} {config.currency_icon}")
@@ -619,7 +620,7 @@ class EconomyCog(Cog, name='Экономика'):
         """
         Кладёт указанное кол-во денег на счёт участника (по умолчанию в dep)
         """
-        await ctx.send(embed=await self.change_bal(member, value, 1, where or "dep"))
+        await ctx.send(embed=await self.change_bal(ctx, member, value, 1, where or "dep"))
 
     @_group_balance.command('remove')
     @commands.guild_only()
@@ -628,7 +629,7 @@ class EconomyCog(Cog, name='Экономика'):
         """
         Снимает указанное кол-во денег со счёта участника (по умолчанию в dep)
         """
-        await ctx.send(embed=await self.change_bal(member, value, -1, where or "dep"))
+        await ctx.send(embed=await self.change_bal(ctx, member, value, -1, where or "dep"))
 
     @_group_balance.command('set')
     @commands.guild_only()
@@ -647,12 +648,12 @@ class EconomyCog(Cog, name='Экономика'):
                 member_data.set_dep(value)
             else:
                 member_data.set_cash(value)
-            embed = discord.Embed(
-                title="Изменение баланса",
-                description=f"Установлен баланс в {where} "
-                            f"{HRF.number(member_data.cash if where == 'cash' else member_data.dep)} "
-                            f"{config.currency_name}"
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title="Изменение баланса",
+                             description=f"Установлен баланс в {where} "
+                                         f"{HRF.number(member_data.cash if where == 'cash' else member_data.dep)} "
+                                         f"{config.currency_name}"
+                             )
             embed.set_author(name=member.display_name, icon_url=member.avatar_url)
             session.commit()
             await ctx.send(embed=embed)
@@ -678,8 +679,8 @@ class EconomyCog(Cog, name='Экономика'):
             bank.add_cash(commission)
             session.commit()
 
-            embed = discord.Embed(title="Транзакция на перевод",
-                                  timestamp=datetime.datetime.now())
+            embed = BotEmbed(ctx=ctx, title="Транзакция на перевод",
+                             timestamp=datetime.datetime.now())
             embed.add_field(name="Отправитель", value=ctx.author.mention)
             embed.add_field(name="Получатель", value=member.mention)
             embed.add_field(name="Переведено", value=str(HRF.number(value)) + " " + config.currency_icon,
@@ -720,18 +721,19 @@ class EconomyCog(Cog, name='Экономика'):
                        key=lambda m: (m[1], m[0].name), reverse=True)
             )
 
-            embed = discord.Embed(
-                title="Самые богатые люди",
-                description="\n".join(f"{i + 1}. {member.mention} : {HRF.number(money)} {config.currency_icon}"
-                                      for i, (member, money) in enumerate(members[:10]))
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title="Самые богатые люди",
+                             description="\n".join(
+                                 f"{i + 1}. {member.mention} : {HRF.number(money)} {config.currency_icon}"
+                                 for i, (member, money) in enumerate(members[:10]))
+                             )
             embed.set_author(name=str(ctx.guild), icon_url=ctx.guild.icon_url)
 
             for i in range(len(members)):
                 if members[i][0] == ctx.author:
                     embed.set_footer(text=f"Ваше место {i + 1}-е", icon_url=ctx.author.avatar_url)
                     break
-            await ctx.send(embed=embed)
+            await ctx.reply(embed=embed)
 
     @commands.command()
     @commands.guild_only()
@@ -749,11 +751,12 @@ class EconomyCog(Cog, name='Экономика'):
                        key=lambda m: (m[1], m[0].name), reverse=False)
             )
 
-            embed = discord.Embed(
-                title="Самые бедные люди",
-                description="\n".join(f"{i + 1}. {member.mention} : {HRF.number(money)} {config.currency_icon}"
-                                      for i, (member, money) in enumerate(members[:10]))
-            ).set_author(name=str(ctx.guild), icon_url=ctx.guild.icon_url)
+            embed = BotEmbed(ctx=ctx,
+                             title="Самые бедные люди",
+                             description="\n".join(
+                                 f"{i + 1}. {member.mention} : {HRF.number(money)} {config.currency_icon}"
+                                 for i, (member, money) in enumerate(members[:10]))
+                             ).set_author(name=str(ctx.guild), icon_url=ctx.guild.icon_url)
 
             for i in range(len(members)):
                 if members[i][0] == ctx.author:
@@ -778,12 +781,13 @@ class EconomyCog(Cog, name='Экономика'):
             max_page = len(items) // max_items_on_page + (1 if len(items) % max_items_on_page else 0)
             assert max_page >= page >= 1, "Нет такой страницы"
 
-            embed = discord.Embed(
-                title=f"Магазин сервера",
-                description=f"Чтобы купить предмет используйте `{self.bot.command_prefix}buy`\n"
-                            f"Чтобы просматривать магазин используйте `{self.bot.command_prefix}shop page`\n"
-                            f"где `page` - номер страницы"
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title=f"Магазин сервера",
+                             description=f"Чтобы купить предмет используйте `{self.bot.command_prefix}buy`\n"
+                                         f"Чтобы просматривать магазин используйте "
+                                         f"`{self.bot.command_prefix}shop page`\n"
+                                         f"где `page` - номер страницы"
+                             )
             embed.set_author(name=str(ctx.guild), icon_url=ctx.guild.icon_url)
             embed.set_footer(text=f"Страница {page}/{max_page}")
             try:
@@ -824,8 +828,8 @@ class EconomyCog(Cog, name='Экономика'):
                 member_data.add_cash(-price)
                 session.commit()
                 session.close()
-                await ctx.send(embed=discord.Embed(title="Успешно!", description="Роль добавлена в ваш инвентарь",
-                                                   colour=discord.colour.Color.from_rgb(0, 255, 0)))
+                await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно!", description="Роль добавлена в ваш инвентарь",
+                                              colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
     @_group_shop.command()
     @commands.guild_only()
@@ -845,8 +849,8 @@ class EconomyCog(Cog, name='Экономика'):
                 {"role": role, "price": price, "description": join_string(description, "Нет описания")})
             config.set_shop({'shop': items})
             session.commit()
-            await ctx.send(embed=discord.Embed(title="Успешно!", description="Предмет добавлен в магазин",
-                                               colour=discord.colour.Color.from_rgb(0, 255, 0)))
+            await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно!", description="Предмет добавлен в магазин",
+                                          colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
     @_group_shop.command()
     @commands.guild_only()
@@ -869,9 +873,9 @@ class EconomyCog(Cog, name='Экономика'):
             except (IndexError, KeyError):
                 assert False, f"В магазине нет предмета с id {item_id}"
             else:
-                await ctx.send(embed=discord.Embed(title="Успешно!", description=f"Предмет {item['role']} убран "
-                                                                                 f"из магазина",
-                                                   colour=discord.colour.Color.from_rgb(0, 255, 0)))
+                await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно!", description=f"Предмет {item['role']} убран "
+                                                                                     f"из магазина",
+                                              colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
     # =======================================================================================================
     @commands.command()
@@ -887,7 +891,7 @@ class EconomyCog(Cog, name='Экономика'):
             config.currency_name = name
             session.commit()
             await ctx.send(
-                embed=discord.Embed(title="Изменена валюта", description=f"Изменена валюта на {icon} {name}"))
+                embed=BotEmbed(ctx=ctx, title="Изменена валюта", description=f"Изменена валюта на {icon} {name}"))
 
     # =======================================================================================================
     @commands.group('luck_box')
@@ -917,7 +921,7 @@ class EconomyCog(Cog, name='Экономика'):
             config: EconomyConfig = self.get_config(session, ctx.guild)
 
             f = "{}: {} " + config.currency_icon
-            embed = discord.Embed(title=name, description=desc + "\nЦены за коробки\n" + "\n".join(
+            embed = BotEmbed(ctx=ctx, title=name, description=desc + "\nЦены за коробки\n" + "\n".join(
                 f.format(i + 1, p) for i, p in enumerate(list(map(int, prices.split(" "))))))
             embed.set_thumbnail(url=image)
             embed.set_author(name=name, icon_url=ctx.guild.icon_url)
@@ -975,7 +979,7 @@ class EconomyCog(Cog, name='Экономика'):
             channel: discord.TextChannel = self.bot.get_channel(831087870843682846)
             if member_data.cash < price:
                 await channel.send(
-                    embed=discord.Embed(
+                    embed=BotEmbed(
                         title="Ошибка покупки",
                         description=f"{member.mention} У тебя не достаточно "
                                     f"средств для покупки этого количества коробок. ({self.bot.command_prefix}bal)"),
@@ -993,7 +997,7 @@ class EconomyCog(Cog, name='Экономика'):
                                 prizes.append(lot)
                                 break
 
-                    embed = discord.Embed(title="Твой выигрыш", description=f"{member.mention} твои призы уже у тебя!")
+                    embed = BotEmbed(title="Твой выигрыш", description=f"{member.mention} твои призы уже у тебя!")
                     for i, lot in enumerate(prizes):
                         embed.add_field(name=f"#{i + 1}: {lot['name']}",
                                         value=channel.guild.get_role(lot['role_id']).mention, inline=False)
@@ -1032,7 +1036,7 @@ class EconomyCog(Cog, name='Экономика'):
             code.by = ctx.author.id
             session.commit()
 
-            await ctx.reply(embed=discord.Embed(title="Активирован промокод").add_field(
+            await ctx.reply(embed=BotEmbed(ctx=ctx, title="Активирован промокод").add_field(
                 name="Начислено", value=HRF.number(code.moneys) + " " + config.currency_icon))
 
     @_group_promo.command('create')
@@ -1050,7 +1054,7 @@ class EconomyCog(Cog, name='Экономика'):
             code.moneys = bigint(moneys)
             session.add(code)
             session.commit()
-            await ctx.send(embed=discord.Embed(title="Промокод").add_field(
+            await ctx.send(embed=BotEmbed(ctx=ctx, title="Промокод").add_field(
                 name="Код", value=f"`{code.code}`").add_field(
                 name="Сумма", value=HRF.number(code.moneys) + ' ' + config.currency_icon
             ))
@@ -1067,10 +1071,11 @@ class EconomyCog(Cog, name='Экономика'):
             config = self.get_config(session, ctx.guild)
             codes = session.query(PromoCode).filter(PromoCode.config_id == config.guild_id,
                                                     PromoCode.activated == False).all()
-            await ctx.send(embed=discord.Embed(
-                title=f"Промокоды {ctx.guild.name}",
-                description="\n".join(f"`{code.code}` - {HRF.number(code.moneys)} {config.currency_icon}"
-                                      for code in codes)))
+            await ctx.send(embed=BotEmbed(ctx=ctx,
+                                          title=f"Промокоды {ctx.guild.name}",
+                                          description="\n".join(
+                                              f"`{code.code}` - {HRF.number(code.moneys)} {config.currency_icon}"
+                                              for code in codes)))
 
     # =======================================================================================================
     @commands.command('help_economy')
@@ -1082,7 +1087,7 @@ class EconomyCog(Cog, name='Экономика'):
         with db_session.create_session() as session:
             config = self.get_config(session, ctx.guild)
 
-            embed = discord.Embed()
+            embed = BotEmbed(ctx=ctx, )
             embed.title = "Экономическая система \"Г.Р.И.Б\""
             embed.description = (
                 "```python\n"

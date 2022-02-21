@@ -14,8 +14,7 @@ with open('config.json', encoding='utf8') as conf_file:
     CONFIG = json.load(conf_file)
 
 
-def main():
-    logging_conf: dict = CONFIG['logging']
+def init_logging(logging_conf: dict):
     handlers_log = []
     if logging_conf['output']['console']:
         handlers_log.append(logging.StreamHandler())
@@ -23,31 +22,46 @@ def main():
         handlers_log.append(logging.FileHandler(CONFIG['logging']['output']['file'], encoding='utf8'))
     logging.basicConfig(level=logging.INFO, format=CONFIG['logging']['format'],
                         handlers=handlers_log)
-    logging.info("Start Program")
 
-    bot_conf: dict = CONFIG['bot']
-    bot = Bot(
-        command_prefix=bot_conf['command_prefix'],
-        db_con=bot_conf['db_con'],
-        owner_ids=CONFIG['admins'],
-        root_id=CONFIG['root'],
-        activity=discord.Game(bot_conf['game_activity']),
-        bot_name=bot_conf['bot_name'],
-        turn_on_api_server=bot_conf.get('turn_on_api_server', False),
-        footer=("PyPLy © | Сделано в России! 👀",
-                "https://cdn.discordapp.com/avatars/403910550028943361/3e5168bf62228b8e3f3ac58da97b563b.webp"),
-        help_command=HelpCommand(width=70),
-        bot_type=TypeBot.both,
-        ignore_errors=(commands.CommandNotFound, commands.CheckFailure),
-        permissions=8, version=("Beta 0.15", datetime.date(day=22, month=11, year=2021)),
-        rebooted='--rebooted' in sys.argv
-    )
 
-    # noinspection SpellCheckingInspection
+def get_cogs():
     cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warframe.py', 'APs.py', 'game_activity.py']),
                         os.listdir('cogs'))
     cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names)) + ['PLyBot.info', 'PLyBot.api']
-    bot.load_all_extensions(cogs)
+    return cogs
+
+
+def main():
+    logging_conf: dict = CONFIG['logging']
+    bot_conf: dict = CONFIG['bot']
+    users_conf: dict = CONFIG['users']
+
+    init_logging(logging_conf)
+    logging.info("Start Program")
+
+    bot = Bot(
+        command_prefix=bot_conf['command_prefix'],
+        db_con=bot_conf['db_con'],
+        turn_on_api_server=bot_conf.get('turn_on_api_server', False),
+        permissions=bot_conf['permissions'],
+
+        activity=discord.Game(bot_conf['game_activity']),
+        bot_name=bot_conf['bot_name'],
+
+        root_id=users_conf['root'],
+        owner_ids=users_conf['admins'],
+
+        version=("Beta 0.15.1", datetime.date(day=20, month=2, year=2022)),
+        footer=bot_conf['footer'],
+        colour=discord.Colour.from_rgb(50, 50, 50),
+
+        ignore_errors=(commands.CommandNotFound, commands.CheckFailure),
+        bot_type=TypeBot.both,
+        help_command=HelpCommand(width=70),
+        rebooted='--rebooted' in sys.argv,
+    )
+
+    bot.load_all_extensions(get_cogs())
 
     with open('token.txt', encoding='utf8') as token_file:
         bot.run(token_file.read())

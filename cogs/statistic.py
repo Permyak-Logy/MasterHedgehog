@@ -4,7 +4,7 @@ import discord
 import sqlalchemy
 from discord.ext import commands
 
-from PLyBot import Bot, Cog, HRF, Context
+from PLyBot import Bot, Cog, HRF, Context, BotEmbed
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 
 
@@ -36,7 +36,7 @@ class StatisticCog(Cog, name='Статистика'):
         """
         Показывает статистику сервера
         """
-        embed = discord.Embed(title=f"Статистика бота {ctx.me.display_name}", colour=self.bot.colour_embeds)
+        embed = BotEmbed(ctx=ctx, title=f"Статистика бота {ctx.me.display_name}", colour=self.bot.colour)
         embed.set_thumbnail(url=ctx.me.avatar_url)
         count_members = len(ctx.guild.members)
         count_bots = len(list(filter(lambda x: not x.bot, ctx.guild.members)))
@@ -78,7 +78,7 @@ class StatisticCog(Cog, name='Статистика'):
         Показывает статистику бота
         """
 
-        embed = discord.Embed(title=f"Статистика бота {ctx.me.display_name}", colour=self.bot.colour_embeds)
+        embed = BotEmbed(ctx=ctx, title=f"Статистика бота {ctx.me.display_name}", colour=self.bot.colour)
         embed.set_thumbnail(url=ctx.me.avatar_url)
         embed.add_field(name="Серверов под наблюдением", value=str(len(self.bot.guilds)))
         embed.add_field(name="Каналов под наблюдением", value=str(len(set(self.bot.get_all_channels()))))

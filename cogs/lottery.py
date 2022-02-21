@@ -7,7 +7,7 @@ from discord.errors import NotFound
 from discord.ext import commands
 
 import db_session
-from PLyBot import Bot, Cog, join_string, HRF
+from PLyBot import Bot, Cog, join_string, HRF, BotEmbed, Context
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 
 
@@ -33,7 +33,7 @@ class LotteryCog(Cog, name="Лотереи"):
     @commands.command('розыгрыш_денег', aliases=['add_lottery_moneys', 'lottery_moneys'], enabled=False)
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
-    async def _cmd_add_raffle_moneys(self, ctx: commands.Context, moneys: int, seconds: int, *title: str):
+    async def _cmd_add_raffle_moneys(self, ctx: Context, moneys: int, seconds: int, *title: str):
         """
         Создаёт розыгрыш на деньги (seconds в сек, title не обязательно указывать)
         (**!!ВНИМАНИЕ** Необходим доступный модуль 'Экономика')
@@ -44,7 +44,7 @@ class LotteryCog(Cog, name="Лотереи"):
         await self._handle_raffle_moneys(ctx, moneys, seconds, title)
 
     @staticmethod
-    async def _handle_raffle_moneys(ctx: commands.Context, moneys: int, delay: int, title: str):
+    async def _handle_raffle_moneys(ctx: Context, moneys: int, delay: int, title: str):
         economy_cog: Cog = ctx.bot.get_cog('Экономика')
         assert economy_cog is not None, "Для работы этой команды необходим подключённый модуль 'Экономика'"
         assert await economy_cog.cog_check(ctx), "Вам не доступна эта команда"
@@ -55,11 +55,11 @@ class LotteryCog(Cog, name="Лотереи"):
         with db_session.create_session() as session:
             config = economy_cog.get_config(session, ctx.guild)
             emote = "✅"
-            embed = discord.Embed(
-                title=title,
-                description=f"Для участия нажмите на {emote}",
-                colour=discord.colour.Color.purple()
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title=title,
+                             description=f"Для участия нажмите на {emote}",
+                             colour=discord.colour.Color.purple()
+                             )
             embed.add_field(name="Сумма", value=HRF.number(moneys) + " " + config.currency_icon)
             embed.add_field(name="Итоги через",
                             value=f"{delay // 60 // 60} ч. {delay // 60 % 60} мин. {delay % 60} сек.")
@@ -85,12 +85,12 @@ class LotteryCog(Cog, name="Лотереи"):
             member = random.choice(members)
             with db_session.create_session() as session:
                 config = economy_cog.get_config(session, ctx.guild)
-                embed = discord.Embed(
-                    title="И у нас есть призёр!",
-                    description=f"{member.mention} получает {HRF.number(moneys)} "
-                                f"{config.currency_icon} на счёт банка",
-                    colour=discord.colour.Color.dark_purple()
-                )
+                embed = BotEmbed(ctx=ctx,
+                                 title="И у нас есть призёр!",
+                                 description=f"{member.mention} получает {HRF.number(moneys)} "
+                                             f"{config.currency_icon} на счёт банка",
+                                 colour=discord.colour.Color.dark_purple()
+                                 )
                 await ctx.send(embed=embed)
                 Balance.get(session, member).add_dep(moneys)
                 session.commit()
@@ -98,13 +98,13 @@ class LotteryCog(Cog, name="Лотереи"):
         await message.delete()
 
     @staticmethod
-    async def _handle_raffle(ctx: commands.Context, role: discord.Role, delay: int, title: str):
+    async def _handle_raffle(ctx: Context, role: discord.Role, delay: int, title: str):
         emote = "✅"
-        embed = discord.Embed(
-            title=title,
-            description=f"Для участия нажмите на {emote}",
-            colour=discord.colour.Color.purple()
-        )
+        embed = BotEmbed(ctx=ctx,
+                         title=title,
+                         description=f"Для участия нажмите на {emote}",
+                         colour=discord.colour.Color.purple()
+                         )
         embed.add_field(name="Роль", value=role.mention)
         embed.add_field(name="Итоги через", value=f"{delay} сек.")
         message = await ctx.send(embed=embed)
@@ -126,11 +126,11 @@ class LotteryCog(Cog, name="Лотереи"):
             if not members:
                 break
             member = random.choice(members)
-            embed = discord.Embed(
-                title="И у нас есть призёр!",
-                description=f"{member.mention} получает роль {role.mention}",
-                colour=discord.colour.Color.dark_purple()
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title="И у нас есть призёр!",
+                             description=f"{member.mention} получает роль {role.mention}",
+                             colour=discord.colour.Color.dark_purple()
+                             )
             await ctx.send(embed=embed)
             await member.add_roles(role)
             break
@@ -141,7 +141,7 @@ class LotteryCog(Cog, name="Лотереи"):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def _cmd_lottery(self, ctx: commands.Context, role: discord.Role, seconds: int, *title: str):
+    async def _cmd_lottery(self, ctx: Context, role: discord.Role, seconds: int, *title: str):
         """
         Создаёт розыгрыш на роль (seconds в сек, title не обязательно указывать)
         """

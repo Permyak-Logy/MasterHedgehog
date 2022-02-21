@@ -1,4 +1,5 @@
 import math
+from typing import Union
 
 import discord
 from discord.ext import commands
@@ -6,23 +7,29 @@ from discord.ext import commands
 import db_session
 from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
 from sqlalchemy import Column, ForeignKey, Integer, String, Date
-from PLyBot import Bot, Cog, Context
+from PLyBot import Bot, Cog, Context, BotEmbed
+from sqlalchemy import orm
 
 
 class ActivityRanksConfig(SqlAlchemyBase, BaseConfigMix):
     __tablename__ = "activity_ranks_configs"
 
-    guild_id = Column(Integer, ForeignKey('guilds.id'),
-                      primary_key=True, nullable=False)
+    guild_id = Column(Integer, ForeignKey('guilds.id'), primary_key=True, nullable=False)
+
     access = Column(String, nullable=False, default='{}')
     active_until = Column(Date, nullable=True, default=MIN_DATETIME)
+
+    ranks = orm.relation('RanksMembers', back_populates='config')
 
 
 class RanksMembers(SqlAlchemyBase):
     __tablename__ = "activity_ranks_members"
 
     config_id = Column(Integer, ForeignKey('activity_ranks_configs.guild_id'), primary_key=True, nullable=False)
+    config = orm.relation('ActivityRanksConfig')
+
     member_id = Column(Integer, ForeignKey('users.id'), primary_key=True, nullable=False)
+
     experience = Column(Integer, nullable=False, default=0)
     mugs_kvass = Column(Integer, default=0)
 
@@ -52,6 +59,17 @@ class ActivityRanksCog(Cog, name="Ранги Активности"):
 
         self.tmp_kvass = set()  # { (id_guild, member_a, member_b) }
 
+    @staticmethod
+    def level_from_rank(exp: int):
+        d = 2.3
+        lvl = math.floor(math.pow(exp, 1 / d))
+        return lvl
+
+    def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> ActivityRanksConfig:
+        if isinstance(guild, discord.Guild):
+            guild = guild.id
+        return session.query(ActivityRanksConfig).filter(ActivityRanksConfig.guild_id == guild).first()
+
     @commands.Cog.listener('on_ready')
     async def update_ranks_members(self):
         with db_session.create_session() as session:
@@ -71,11 +89,11 @@ class ActivityRanksCog(Cog, name="Ранги Активности"):
         with db_session.create_session() as session:
             member = member or ctx.author
             rank_member: RanksMembers = RanksMembers.get(session, member)
-
             d = 2.3
             lvl = math.floor(math.pow(rank_member.experience, 1 / d))
 
-            embed = discord.Embed(title=f"Ранг на сервере {ctx.guild}", colour=self.bot.colour_embeds)
+            embed = BotEmbed(ctx=ctx, title=f"Ранг на сервере", colour=self.bot.colour)
+            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
             embed.add_field(name="Участник:", value=member.mention)
             embed.add_field(name="Уровень:", value=f"**{lvl}**")
             embed.add_field(name="Опыт:", value=f"**{rank_member.experience}** exp")
@@ -84,6 +102,30 @@ class ActivityRanksCog(Cog, name="Ранги Активности"):
             embed.set_footer(text=f"Позиция: №{RanksMembers.get_position(session, member)}")
             embed.set_thumbnail(url=member.avatar_url)
 
+        await ctx.reply(embed=embed)
+
+    @_group_rank.command('доска', aliases=['board'])
+    async def _cmd_rank_board(self, ctx: Context):
+        """Выводит таблицу с топом активных людей"""
+        with db_session.create_session() as session:
+            config = self.get_config(session, ctx.guild)
+            top = sorted(filter(lambda x: bool(x[0]), map(
+                lambda md: (ctx.guild.get_member(md.member_id), md.experience, md.mugs_kvass), config.ranks)),
+                         key=lambda m: (m[1], m[2]), reverse=True)
+            your_position = RanksMembers.get_position(session, ctx.author)
+        embed = BotEmbed(ctx=ctx, title="Самые активные люди")
+
+        names = "\n".join(f"{i}. {member.mention}" for i, (member, _, __) in enumerate(top[:10], start=1))
+        level = "\n".join(f"{self.level_from_rank(exp)} **ур.**" for _, exp, __ in top[:10])
+        kvass = "\n".join(f"\\🍺 {kvass}" for _, __, kvass in top[:10])
+
+        embed.add_field(name="Имя", value=names)
+        embed.add_field(name="Уровень", value=level)
+        embed.add_field(name="Квас", value=kvass)
+
+        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+        embed.set_thumbnail(url=top[0][0].avatar_url)
+        embed.set_footer(text=f'Ваше место {your_position}-e', icon_url=ctx.author.avatar_url)
         await ctx.reply(embed=embed)
 
     @commands.command('квас', aliases=['kvass'])

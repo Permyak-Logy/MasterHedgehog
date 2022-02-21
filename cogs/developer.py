@@ -10,7 +10,7 @@ from discord.errors import Forbidden
 from discord.ext import commands
 
 import db_session
-from PLyBot import Bot, Cog, ApiKey, join_string, Context
+from PLyBot import Bot, Cog, join_string, Context, BotEmbed
 from db_session.base import Guild
 from db_session.const import MIN_DATETIME
 
@@ -51,8 +51,8 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                 activated.append(f"`{cog.qualified_name}`")
             session.commit()
         activated = " | ".join(activated)
-        embed = discord.Embed(title="Успешно!", description=f'На сервере были успешно активированы модули:\n\n'
-                                                            f'{activated}', colour=self.bot.colour_embeds)
+        embed = BotEmbed(ctx=ctx, title="Успешно!", description=f'На сервере были успешно активированы модули:\n\n'
+                                                                f'{activated}', colour=self.bot.colour)
         await ctx.send(embed=embed)
 
     @_group_sudo.command(aliases=['deact'])
@@ -78,8 +78,8 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
             session.commit()
         activated = " | ".join(activated)
-        embed = discord.Embed(title="Успешно!", description=f'На сервере были успешно деактивированы модули:\n\t'
-                                                            f'{activated}', colour=self.bot.colour_embeds)
+        embed = BotEmbed(ctx=ctx, title="Успешно!", description=f'На сервере были успешно деактивированы модули:\n\t'
+                                                                f'{activated}', colour=self.bot.colour)
         await ctx.send(embed=embed)
 
     @_group_sudo.command(aliases=['set_cau'])
@@ -108,9 +108,10 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             config.active_until = date
             session.commit()
 
-        await ctx.send(embed=discord.Embed(
-            title="Успех", description=f"Время активности {cog} сервера {guild} установленно на {date}",
-            colour=self.bot.colour_embeds))
+        await ctx.send(embed=BotEmbed(ctx=ctx,
+                                      title="Успех",
+                                      description=f"Время активности {cog} сервера {guild} установленно на {date}",
+                                      colour=self.bot.colour))
 
     @_group_sudo.command(aliases=['get_cau'])
     @commands.is_owner()
@@ -125,7 +126,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             config = cog.get_config(session, guild)
 
             assert hasattr(config, "active_until"), "В этом модуле нет настройки активности"
-            embed = discord.Embed(title=f"Сервер {guild}", description="Модуль {cog} активен {msg}")
+            embed = BotEmbed(ctx=ctx, title=f"Сервер {guild}", description="Модуль {cog} активен {msg}")
             if config.active_until:
                 embed.description = embed.description.format(cog=cog, msg=f"до {config.active_until}")
             else:
@@ -143,8 +144,9 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         statuses = list(map(lambda m: m.status, guild.members))
         types = list(map(lambda m: m.bot, guild.members))
 
-        embed = discord.Embed(
-            title=f"Информация о сервере {guild}", colour=self.bot.colour_embeds).set_thumbnail(url=guild.icon_url)
+        embed = BotEmbed(ctx=ctx,
+                         title=f"Информация о сервере {guild}", colour=self.bot.colour).set_thumbnail(
+            url=guild.icon_url)
         embed.add_field(name="Участники", value=f"\\👥 Всего: **{guild.member_count}**\n"
                                                 f"\\👤 Людей: **{types.count(False)}**\n"
                                                 f"\\🤖 Ботов: **{types.count(True)}**")
@@ -230,7 +232,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         Перезагружает систему бота
         """
 
-        await ctx.reply(embed=discord.Embed(description=f"Хорошо. Перезагрузка стартует в {delay} сек."))
+        await ctx.reply(embed=BotEmbed(ctx=ctx, description=f"Хорошо. Перезагрузка стартует в {delay} сек."))
         subprocess.Popen([sys.executable, 'rebooter.py', str(delay), str(os.getpid())])
         await asyncio.sleep(delay - 1)
         self.bot.is_ready()
@@ -245,11 +247,11 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         self.bot.active_auto_save = False
         delay = 5
         await ctx.message.delete(delay=delay)
-        await ctx.send(embed=discord.Embed(
-            title="Система",
-            description="Выполняю отключение",
-            colour=self.bot.colour_embeds,
-            delete_after=delay))
+        await ctx.send(embed=BotEmbed(ctx=ctx,
+                                      title="Система",
+                                      description="Выполняю отключение",
+                                      colour=self.bot.colour,
+                                      delete_after=delay))
         await asyncio.sleep(delay + 1)
         await self.bot.logout()
 
@@ -260,7 +262,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         Возвращает ошибку KeyboardInterrupt
         """
         await ctx.send(
-            embed=discord.Embed(title="Система", description="Выполняю ctrl + C", colour=self.bot.colour_embeds))
+            embed=BotEmbed(ctx=ctx, title="Система", description="Выполняю ctrl + C", colour=self.bot.colour))
         await asyncio.sleep(1)
         raise KeyboardInterrupt()
 
