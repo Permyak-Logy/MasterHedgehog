@@ -6,6 +6,11 @@
     "bot_name": "Ёжа",
     "turn_on_api_server": false,
     "permissions": 8,
+    "colour": [
+      127,
+      127,
+      127
+    ],
     "footer": {
       "text": "PyPLy © | Сделано в России! 👀",
       "icon_url": "https://cdn.discordapp.com/avatars/403910550028943361/f9d64379c75cd44ed37ce6951173264b.webp"

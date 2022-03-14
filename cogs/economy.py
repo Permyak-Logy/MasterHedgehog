@@ -13,7 +13,7 @@ from discord.ext.commands import BucketType
 import db_session
 from PLyBot import Bot, Cog, join_string, HRF, Context, BotEmbed
 from PLyBot.const import EMOJI_NUMBERS
-from db_session import BaseConfigMix, SqlAlchemyBase, bigint, MIN_DATETIME, Session
+from db_session import BaseConfigMix, SqlAlchemyBase, bigint, Session
 
 
 # TODO: Роли бустеры
@@ -32,7 +32,7 @@ class EconomyConfig(SqlAlchemyBase, BaseConfigMix):
     currency_name = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='алм.')
 
     access = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='{}')
-    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
+    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
 
     def get_shop(self, ctx: commands.Context):
         shop = json.loads(self.shop)
@@ -120,6 +120,7 @@ class PromoCode(SqlAlchemyBase):
     by = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'))
 
 
+# Ошибка при подключении к новому серваку
 class EconomyCog(Cog, name='Экономика'):
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=EconomyConfig, emoji_icon='💎')
@@ -139,8 +140,12 @@ class EconomyCog(Cog, name='Экономика'):
             for member in self.bot.get_all_members():
                 DBEconomyTools.update_features_member(session, member)
             session.commit()
-            for member in self.bot.get_all_members():
-                DBEconomyTools.update_balance_member(session, member)
+
+    @commands.Cog.listener('on_guild_join')
+    async def _listener_first_update_guild_on_join(self, guild: discord.Guild):
+        with db_session.create_session() as session:
+            for member in guild.members:
+                DBEconomyTools.update_features_member(session, member)
             session.commit()
 
     # =======================================================================================================

@@ -14,7 +14,7 @@ class RandomConfig(SqlAlchemyBase, BaseConfigMix):
     guild_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('guilds.id'),
                                  primary_key=True, nullable=False)
     access = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='{}')
-    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
+    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
 
 
 class RandomCog(Cog, name='Случайности'):

@@ -3,12 +3,12 @@ from typing import Union
 
 import discord
 from discord.ext import commands
+from sqlalchemy import Column, ForeignKey, Integer, String, Date
+from sqlalchemy import orm
 
 import db_session
-from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
-from sqlalchemy import Column, ForeignKey, Integer, String, Date
 from PLyBot import Bot, Cog, Context, BotEmbed
-from sqlalchemy import orm
+from db_session import SqlAlchemyBase, BaseConfigMix
 
 
 class ActivityRanksConfig(SqlAlchemyBase, BaseConfigMix):
@@ -17,7 +17,7 @@ class ActivityRanksConfig(SqlAlchemyBase, BaseConfigMix):
     guild_id = Column(Integer, ForeignKey('guilds.id'), primary_key=True, nullable=False)
 
     access = Column(String, nullable=False, default='{}')
-    active_until = Column(Date, nullable=True, default=MIN_DATETIME)
+    active_until = Column(Date, nullable=True, default=None)
 
     ranks = orm.relation('RanksMembers', back_populates='config')
 

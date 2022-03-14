@@ -8,11 +8,13 @@ import sys
 import discord
 from discord.errors import Forbidden
 from discord.ext import commands
+from discord_components import Select, SelectOption, Interaction
 
 import db_session
 from PLyBot import Bot, Cog, join_string, Context, BotEmbed
 from db_session.base import Guild
 from db_session.const import MIN_DATETIME
+from db_session import BaseConfigMix
 
 activate_parser = argparse.ArgumentParser()
 activate_parser.add_argument('-A', action="store_true")
@@ -24,15 +26,93 @@ class DeveloperCog(Cog, name="Для разработчиков"):
     def __init__(self, bot: Bot):
         super().__init__(bot, emoji_icon="🛠️")
 
-    @commands.group(name='sudo', alaises=['su'])
+    @commands.group(name='sudo')
     @commands.is_owner()
     async def _group_sudo(self, ctx: Context):
         """Вызов root команд"""
         await ctx.just_send_help()
 
+    @_group_sudo.command('cogs')
+    async def _cmd_sudo_cogs(self, ctx: Context, *, guild: discord.Guild = None):
+        """Вызывает контроллер для включения и выключения модулей"""
+        guild: discord.Guild = guild or ctx.guild
+        assert guild, "Не указан сервер"
+        cogs_with_active_until = []
+        for cog in filter(bool, map(self.bot.get_cog, self.bot.cogs)):
+            if not (isinstance(cog, Cog) and cog.cls_config is not None):
+                continue
+            if hasattr(cog.cls_config, "active_until"):
+                cogs_with_active_until.append(cog)
+
+        embed = BotEmbed(ctx=ctx, title="Контролер модулей")
+        options = []
+
+        with db_session.create_session() as session:
+            for cog in cogs_with_active_until:
+                config = cog.get_config(session, guild)
+                date: datetime.date = config.active_until
+                active_until = ("🟢" if config.check_active_until() else "🔴") + " " + (
+                    f"Активен до {date}" if date else "Активен на век")
+
+                options.append(SelectOption(
+                    label=cog.qualified_name,
+                    value=cog.id,
+                    emoji=cog.emoji_icon,
+                    description=active_until,
+                    default=config.check_active_until()
+                ))
+                embed.add_field(name=cog.emoji_icon + " " + cog.qualified_name, value=active_until)
+
+        custom_id = f"_cmd_sudo_cogs:{ctx.message.id}"
+
+        msg: discord.Message = await ctx.reply(
+            embed=embed, components=[Select(
+                placeholder="Выбери каналы!",
+                options=options,
+                min_values=0,
+                max_values=len(cogs_with_active_until),
+                custom_id=custom_id)
+            ])
+        try:
+            interaction: Interaction = await self.bot.wait_for(
+                "select_option", check=lambda inter: inter.custom_id == custom_id and inter.user == ctx.author,
+                timeout=5 * 60
+            )
+        except asyncio.TimeoutError:
+            pass
+        else:
+            toggles_cogs = list(map(int, interaction.values))
+            cogs_activated = []
+            cogs_deactivated = []
+            with db_session.create_session() as session:
+                for cog in cogs_with_active_until:
+                    config: BaseConfigMix = cog.get_config(session, ctx.guild)
+                    if (cog.id in toggles_cogs) is (config.check_active_until()):
+                        continue
+
+                    if cog.id not in toggles_cogs:
+                        config.active_until = MIN_DATETIME
+                        cogs_deactivated.append(cog)
+                    else:
+                        config.active_until = None
+                        cogs_activated.append(cog)
+
+                session.commit()
+            embed = BotEmbed(ctx=ctx, title="Успешно!")
+            if cogs_activated:
+                embed.add_field(name="Активированы", value="\n".join(map(
+                    lambda x: x.emoji_icon + " " + x.qualified_name, cogs_activated)))
+            if cogs_deactivated:
+                embed.add_field(name="Деактивированы", value="\n".join(map(
+                    lambda x: x.emoji_icon + " " + x.qualified_name, cogs_deactivated)))
+
+            await interaction.send(embed=embed, ephemeral=True, delete_after=60)
+        finally:
+            await msg.delete()
+
     @_group_sudo.command(name='activate', aliases=['act'])
     @commands.is_owner()
-    async def activate(self, ctx: Context, *, guild: discord.Guild = None):
+    async def _cmd_sudo_activate(self, ctx: Context, *, guild: discord.Guild = None):
         """
         Активирует на бессрочное использование всех модулей на сервере
         """
@@ -55,9 +135,9 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                                                                 f'{activated}', colour=self.bot.colour)
         await ctx.send(embed=embed)
 
-    @_group_sudo.command(aliases=['deact'])
+    @_group_sudo.command(name="deactivate", aliases=['deact'])
     @commands.is_owner()
-    async def deactivate(self, ctx: Context, *, guild: discord.Guild = None):
+    async def _cmd_sudo_deactivate(self, ctx: Context, *, guild: discord.Guild = None):
         """
         Деактивирует на бессрочное использование указанный модуль
         """
@@ -82,9 +162,9 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                                                                 f'{activated}', colour=self.bot.colour)
         await ctx.send(embed=embed)
 
-    @_group_sudo.command(aliases=['set_cau'])
+    @_group_sudo.command(name="set_cog_active_until", aliases=['set_cau'])
     @commands.is_owner()
-    async def set_cog_active_until(self, ctx: Context, guild: int, cog: str, date: str = None):
+    async def _cmd_sudo_set_cog_active_until(self, ctx: Context, guild: int, cog: str, date: str = None):
         """
         date в формате "ММ/ДД/ГГ"
         """
@@ -113,9 +193,9 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                                       description=f"Время активности {cog} сервера {guild} установленно на {date}",
                                       colour=self.bot.colour))
 
-    @_group_sudo.command(aliases=['get_cau'])
+    @_group_sudo.command(name="get_cog_active_until", aliases=['get_cau'])
     @commands.is_owner()
-    async def get_cog_active_until(self, ctx: Context, guild: int, cog: str):
+    async def _cmd_sudo_get_cog_active_until(self, ctx: Context, guild: int, cog: str):
         guild = self.bot.get_guild(guild)
         assert isinstance(guild, discord.Guild), "Неизвестный сервер"
 
@@ -185,7 +265,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
     @_group_sudo.command('ban_guild')
     @commands.is_owner()
-    async def ban_guild(self, ctx: Context, guild: discord.Guild = None):
+    async def _cmd_sudo_ban_guild(self, ctx: Context, guild: discord.Guild = None):
         """Банит активность на указанном сервере"""
         guild = guild or ctx.guild
         assert guild, "Не указан сервер"
@@ -197,7 +277,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
     @_group_sudo.command('unban_guild')
     @commands.is_owner()
-    async def unban_guild(self, ctx: Context, guild: discord.Guild = None):
+    async def _cmd_sudo_unban_guild(self, ctx: Context, guild: discord.Guild = None):
         """Разбанивает активность на указанном сервере"""
 
         guild = guild or ctx.guild
@@ -210,7 +290,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
     @_group_sudo.command(name="отпр", aliases=['send'])
     @commands.is_owner()
-    async def send(self, ctx: Context, user: discord.User, *text: str):
+    async def _cmd_sudo_send(self, ctx: Context, user: discord.User, *text: str):
         """
         Отправляет сообщение пользователю с текстом
         """
@@ -227,7 +307,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
     @_group_sudo.command(name="перезагрузка", aliases=['reboot'])
     @commands.is_owner()
-    async def reboot(self, ctx: Context, delay: int = 5):
+    async def _cmd_sudo_reboot(self, ctx: Context, delay: int = 5):
         """
         Перезагружает систему бота
         """
@@ -240,7 +320,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
     @_group_sudo.command(name="отключение", aliases=['logout', 'exit', 'disconnect', 'close'])
     @commands.is_owner()
-    async def logout(self, ctx: Context):
+    async def _cmd_sudo_logout(self, ctx: Context):
         """
         Выходит из системы
         """
@@ -255,9 +335,9 @@ class DeveloperCog(Cog, name="Для разработчиков"):
         await asyncio.sleep(delay + 1)
         await self.bot.logout()
 
-    @_group_sudo.command()
+    @_group_sudo.command(name='ctrl_c')
     @commands.is_owner()
-    async def ctrl_c(self, ctx: Context):
+    async def _cmd_sudo_ctrl_c(self, ctx: Context):
         """
         Возвращает ошибку KeyboardInterrupt
         """
@@ -265,6 +345,19 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             embed=BotEmbed(ctx=ctx, title="Система", description="Выполняю ctrl + C", colour=self.bot.colour))
         await asyncio.sleep(1)
         raise KeyboardInterrupt()
+
+    @_group_sudo.command('su', aliases=['sudo'])
+    @commands.is_owner()
+    async def _cmd_sudo_su(self, ctx: Context):
+        """
+        Отключает или включает все проверки доступа для пользователей группы Owner
+        """
+        assert ctx.author.id == self.bot.root_id, "Только root может включить режим root"
+        self.bot.root_active = not self.bot.root_active
+        await ctx.reply(
+            embed=BotEmbed(ctx=ctx, title="Система", description="Игнорирование ограничений доступа: " + (
+                "Включено\n||Будьте осторожны с использованием!||" if self.bot.root_active else "Выключено"))
+        )
 
 
 def setup(bot: Bot):

@@ -5,14 +5,14 @@ from typing import Union
 import discord
 import sqlalchemy
 from discord.ext import commands
+from discord_components import Select, SelectOption, Interaction
 from flask import Blueprint, jsonify, request
 
-from PLyBot.const import HeadersApi, Types
 import db_session
-from PLyBot import Bot, Cog, Context, get_any, BotEmbed
 from PLyBot import BaseApiBP, JSON_STATUS
-from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
-from discord_components import Select, SelectOption, Interaction
+from PLyBot import Bot, Cog, Context, get_any, BotEmbed
+from PLyBot.const import HeadersApi, Types
+from db_session import SqlAlchemyBase, BaseConfigMix, NONE
 
 
 class PrivateChannelsConfig(SqlAlchemyBase, BaseConfigMix):
@@ -22,7 +22,7 @@ class PrivateChannelsConfig(SqlAlchemyBase, BaseConfigMix):
                                  primary_key=True, nullable=False)
     channels = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     access = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='{}')
-    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
+    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
 
     def set_channels(self, *channels: discord.VoiceChannel):
         for channel in channels:
@@ -74,21 +74,22 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
             config = self.get_config(session, ctx.guild)
             old_channels = config.get_channels(self.bot)
 
-        custom_id = f"_cmd_pcc_{ctx.message.id}"
+        custom_id = f"_cmd_pcc:{ctx.message.id}"
         msg: discord.Message = await ctx.reply(
-            embed=BotEmbed(ctx=ctx, 
-                title="Настройка приватных каналов",
-                description="Выберите голосовые каналы, "
-                            "которые будут установлены "
-                            "как каналы для создания приватных голосовых каналов",
-                colour=self.bot.colour).set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url),
+            embed=BotEmbed(ctx=ctx,
+                           title="Настройка приватных каналов",
+                           description="Выберите голосовые каналы, "
+                                       "которые будут установлены "
+                                       "как каналы для создания приватных голосовых каналов",
+                           colour=self.bot.colour).set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url),
             components=[Select(
                 placeholder="Выбери каналы!",
                 options=[
                     SelectOption(label=channel.name,
                                  value=channel.id,
                                  emoji="🔊",
-                                 description=f"id: {channel.id}" + (f" категория: {channel.category}" if channel.category else ""),
+                                 description=f"id: {channel.id}" + (
+                                     f" категория: {channel.category}" if channel.category else ""),
                                  default=channel in old_channels)
                     for channel in ctx.guild.voice_channels],
                 min_values=0,
@@ -109,12 +110,13 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
                 config.set_channels(*new_channels)
                 session.commit()
 
-            embed = BotEmbed(ctx=ctx, 
-                title="Успешно!",
-                colour=self.bot.colour,
-                description=(f'Установлены приватные каналы:\n' + "\n".join(f"\\🔊 {channel}" for channel in new_channels)
-                             if new_channels else "Убраны все голосовые каналы для создания приватных каналов")
-            )
+            embed = BotEmbed(ctx=ctx,
+                             title="Успешно!",
+                             colour=self.bot.colour,
+                             description=(f'Установлены приватные каналы:\n' + "\n".join(
+                                 f"\\🔊 {channel}" for channel in new_channels)
+                                          if new_channels else "Убраны все голосовые каналы для создания приватных каналов")
+                             )
 
             await interaction.send(embed=embed, ephemeral=False, delete_after=60)
         finally:

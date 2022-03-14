@@ -7,7 +7,7 @@ from discord.ext import commands
 
 import db_session
 from PLyBot import Bot, Cog, BotEmbed
-from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
+from db_session import SqlAlchemyBase, BaseConfigMix
 
 
 class TicketsConfig(SqlAlchemyBase, BaseConfigMix):
@@ -16,7 +16,7 @@ class TicketsConfig(SqlAlchemyBase, BaseConfigMix):
     guild_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('guilds.id'),
                                  primary_key=True, nullable=False)
     access = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='{}')
-    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
+    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
 
 
 class TicketsSection(SqlAlchemyBase):

@@ -4,6 +4,7 @@ import re
 
 import discord
 from discord.ext import commands
+from .embed import BotEmbed
 
 from .paginator import Paginator
 
@@ -47,8 +48,6 @@ class HelpCommand(commands.MinimalHelpCommand):
                                           aliases_heading="Псевдонимы", **params)
         self.width = params.pop('width', 80)
         self.subcommands_heading = "Подкоманды"
-
-        self.colour = params.pop('colour', discord.colour.Colour.from_rgb(127, 127, 127))
         self.hint_types = params.pop('hint_types', True)
 
     def shorten_text(self, text):
@@ -68,10 +67,10 @@ class HelpCommand(commands.MinimalHelpCommand):
             if str(val).startswith('typing.'):
                 annotations[key] = str(val).replace('typing.', '', 1)
         if self.hint_types:
-            return "%s%s %s" % (self.clean_prefix,
-                                command.qualified_name,
-                                ' '.join(map(lambda data: f"<{data[0]}:{data[1]}>" if data[1] is not None
-                                else f"<{data[0]}>", annotations.items())))
+            return "%s%s %s" % (self.clean_prefix, command.qualified_name,
+                                ' '.join(map(
+                                    lambda data: f"<{data[0]}:{data[1]}>" if data[1] is not None
+                                    else f"<{data[0]}>", annotations.items())))
         else:
             return "%s%s %s" % (self.clean_prefix,
                                 command.qualified_name,
@@ -142,7 +141,7 @@ class HelpCommand(commands.MinimalHelpCommand):
 
     async def send_error_message(self, error):
         await self.get_destination().send(
-            embed=discord.Embed(title="Упс. Ошибка", description=error, colour=self.colour))
+            embed=BotEmbed(ctx=self.context, title="Упс. Ошибка", description=error))
 
     async def send_bot_help(self, mapping):
         ctx = self.context
@@ -283,11 +282,10 @@ class HelpCommand(commands.MinimalHelpCommand):
                 else:
                     fields[cur].append(line)
 
-            embed = discord.Embed(title=title or self.context.bot.user.name,
-                                  colour=self.colour,
-                                  description="\n".join(fields[None]) if fields[None] else None,
-                                  video=video if video else None
-                                  )
+            embed = BotEmbed(ctx=self.context, title=title or self.context.bot.user.name,
+                             description="\n".join(fields[None]) if fields[None] else None,
+                             video=video if video else None
+                             )
             not footer or embed.set_footer(text=footer, icon_url=footer_icon)
             not author or embed.set_author(name=author, icon_url=author_icon)
             not image or embed.set_image(url=image)

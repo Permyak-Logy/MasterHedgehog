@@ -1,5 +1,5 @@
 import asyncio
-from typing import Union
+from typing import Union, Optional
 
 import discord
 from discord.ext import commands
@@ -26,6 +26,39 @@ class InfoCog(Cog, name="Информация"):
 
         self.bot.reload_command('help')
 
+    @commands.Cog.listener('on_guild_join')
+    async def hello_guild(self, guild: discord.Guild, *,
+                          channel: Optional[Union[discord.DMChannel, discord.TextChannel]]):
+        channel = channel or guild.system_channel
+        if channel is None:
+            return
+
+        bot: Bot = self.bot
+        prefix = bot.prefix_guild(guild)
+        owner = bot.get_user(403910550028943361)
+        embed = BotEmbed(
+            title=str(self.bot.user.name),
+            colour=self.bot.colour,
+            description=(
+                f"Привет! Меня зовут {self.bot.name}! Я бот с огромным функционалом и разными возможностями.\n"
+                f"\n"
+                f"Мой префикс `{prefix}`, но ты также можешь просто @обратиться ко мне.\n"
+                f"Взгляни на команду `{prefix}{self.bot.get_command('help')}`"
+                f"для более детальной информации о моих возможностях или просто после команды напиши `?`.\n"
+                f"||например `{prefix}{self._cmd_info} ?` или "
+                f"`{prefix}{self.bot.get_command('help')} {self._cmd_info}`||")
+        )
+        embed.add_field(name="Сборка", value=self.bot.version)
+        embed.set_thumbnail(url=bot.user.avatar_url)
+        if isinstance(owner, discord.User):
+            embed.set_author(name=owner.name, icon_url=owner.avatar_url)
+            if self.bot.footer:
+                embed.set_footer(**self.bot.footer)
+            embed.add_field(name="Мой разработчик", value=f"{owner}")
+            embed.set_image(
+                url="https://cdn.discordapp.com/attachments/653543360161644545/911597130412593162/Master_.png")
+        await channel.send(embed=embed)
+
     @commands.Cog.listener('on_message')
     async def on_mention(self, message: discord.Message):
         if not self.bot.is_ready():
@@ -40,32 +73,7 @@ class InfoCog(Cog, name="Информация"):
         """
         Выдаёт информацию о боте
         """
-        bot: Bot = ctx.bot
-        owner = bot.get_user(403910550028943361)
-        embed = BotEmbed(ctx=ctx,
-                         title=str(self.bot.user.name),
-                         colour=self.bot.colour,
-                         description=(
-                             f"Привет! Меня зовут {self.bot.name}! Я бот с огромным функционалом и разными возможностями.\n"
-                             f"\n"
-                             f"Мой префикс `{ctx.prefix}`, но ты также можешь просто @обратиться ко мне.\n"
-                             f"Взгляни на команду `{ctx.prefix}{self.bot.get_command('help')}`"
-                             f"для более детальной информации о моих возможностях или просто после команды напиши `?`.\n"
-                             f"||например `{ctx.prefix}{self._cmd_info} ?` или "
-                             f"`{ctx.prefix}{self.bot.get_command('help')} {self._cmd_info}`||"
-                         )
-                         )
-        embed.add_field(name="Сборка", value=self.bot.version)
-        embed.set_thumbnail(url=bot.user.avatar_url)
-        if isinstance(owner, discord.User):
-            embed.set_author(name=owner.name, icon_url=owner.avatar_url)
-            if self.bot.footer:
-                embed.set_footer(**self.bot.footer)
-            embed.add_field(name="Мой разработчик", value=f"{owner}")
-            embed.set_image(
-                url="https://cdn.discordapp.com/attachments/653543360161644545/911597130412593162/Master_.png")
-        await asyncio.sleep(1.5)
-        await ctx.reply(embed=embed)
+        await self.hello_guild(ctx.guild, channel=ctx.channel)
 
     @commands.command(name="пинг", aliases=["ping"])
     async def _cmd_ping(self, ctx: Context):
@@ -208,6 +216,7 @@ class InfoCog(Cog, name="Информация"):
     @commands.has_guild_permissions(administrator=True)
     async def _cmd_prefix_set(self, ctx: commands.Context, new_prefix: str = None):
         """Устанавливает новый префикс в гильдию. Если хотите сбрость, то оставьте поле new_prefix пустым"""
+        assert "%" not in new_prefix, f"Префикс содержит запрещённые символы: %"
         with db_session.create_session() as session:
             guild_data = Guild.get(session, ctx.guild)
             guild_data.command_prefix = new_prefix

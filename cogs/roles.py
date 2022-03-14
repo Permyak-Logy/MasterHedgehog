@@ -9,7 +9,7 @@ import db_session
 from PLyBot import Bot, BotEmbed
 from PLyBot import Cog, Context
 from PLyBot.const import EMOJI_NUMBERS
-from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
+from db_session import SqlAlchemyBase, BaseConfigMix, NONE
 from db_session.base import Member
 
 
@@ -26,7 +26,7 @@ class RolesConfig(SqlAlchemyBase, BaseConfigMix):
     roles = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     access = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='{}')
 
-    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
+    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
 
     def __str__(self):
         return f'{self.__class__.__name__}(id={self.guild_id} roles={self.active_until})'

@@ -5,13 +5,13 @@ import random
 import discord
 import pyttsx3
 from discord.ext import commands
+from sqlalchemy import Column, ForeignKey, Integer, String, Date
 
 import db_session
 from PLyBot import Bot, Cog, Context, BotEmbed
 from PLyBot.const import TEXT_EMOJI_NUMBERS
+from db_session import SqlAlchemyBase, BaseConfigMix
 from db_session.base import Message
-from db_session import SqlAlchemyBase, BaseConfigMix, MIN_DATETIME
-from sqlalchemy import Column, ForeignKey, Integer, String, Date
 
 try:
     from other import swift
@@ -29,13 +29,39 @@ class FunConfig(SqlAlchemyBase, BaseConfigMix):
     guild_id = Column(Integer, ForeignKey('guilds.id'),
                       primary_key=True, nullable=False)
     access = Column(String, nullable=False, default='{}')
-    active_until = Column(Date, nullable=True, default=MIN_DATETIME)
+    active_until = Column(Date, nullable=True, default=None)
 
 
-# TODO: R
 class FunCog(Cog, name="Веселье"):
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=FunConfig, emoji_icon='😂')
+
+    @staticmethod
+    async def get_words(ctx: Context):
+        with db_session.create_session() as session:
+            # noinspection PyShadowingBuiltins
+            def format_sentence(line: str):
+                if not line or not set(filter(lambda x: x.isalnum(), set(line))) or not line.strip()[0].isalnum():
+                    return ""
+                symbols = set(filter(lambda x: not x.isalnum(), set(line)))
+                for symbol in symbols:
+                    line = line.replace(symbol, ' ' + symbol + ' ')
+                line = line.replace('  ', ' ').strip()
+                return line.lower()
+
+            all_messages = session.query(Message).filter(Message.content != "",
+                                                         Message.has_mentions == False,
+                                                         Message.has_mentions_roles == False,
+                                                         Message.has_mentions_everyone == False,
+                                                         Message.guild == ctx.guild.id).all()
+
+            await asyncio.sleep(0.0001)
+            words = swift.words.copy()
+            for sentence in map(lambda x: format_sentence(x.content), all_messages):
+                await asyncio.sleep(0.000001)
+                if sentence:
+                    words += sentence.split()
+        return words
 
     @commands.command('load_all_msgs')
     @commands.is_owner()
@@ -53,6 +79,7 @@ class FunCog(Cog, name="Веселье"):
                         async for message in channel.history():
                             count += 1
                             Message.update(session, message)
+                            await asyncio.sleep(0.00001)
                     except Exception:
                         pass
                 session.commit()
@@ -61,62 +88,40 @@ class FunCog(Cog, name="Веселье"):
     @commands.command(name="слово", aliases=["word", "w", "бред"])
     @commands.cooldown(1, 0.1 * 60, type=commands.BucketType.guild)
     @commands.guild_only()
-    async def _cmd_word(self, ctx: Context, word: str = None, level: int = 2):
+    async def _cmd_word(self, ctx: Context, cursor: str = None, level: int = 3):
         """
-        Генератор бредовых предложений. Делает их из книги
+        Генератор бредовых предложений. Делает их из книги и на основе сообщений сервера
         """
+        assert level >= 2, "Слишком маленький показатель бреда. Значение должно быть >= 2"
 
         async with ctx.typing():
-            with db_session.create_session() as session:
-                # noinspection PyShadowingBuiltins
-                def format(line: str):
-                    if not line or not set(filter(lambda x: x.isalnum(), set(line))) or not line.strip()[0].isalnum():
-                        return ""
-                    # symbols = set(filter(lambda x: not x.isalnum(), set(line)))
-                    symbols = ".,;?!-"
-                    for symbol in symbols:
-                        line = line.replace(symbol, ' ' + symbol + ' ')
-                    line = line.replace('  ', ' ').strip()
-                    return line.lower()
+            words = await self.get_words(ctx)
+            count_words = len(words)
 
-                all_messages = session.query(Message).filter(Message.content != "", Message.has_mentions == False,
-                                                             Message.has_mentions_roles == False,
-                                                             Message.has_mentions_everyone == False).all()
-                await asyncio.sleep(0.0001)
-                all_sentences = list(map(format, filter(bool, map(lambda x: x.content, all_messages))))
-                await asyncio.sleep(0.0001)
-                sentences = []
-                for sentence in all_sentences:
-                    sentences += sentence.split()
-            await asyncio.sleep(0.0001)
-            words = swift.words + sentences
+            cursor: str = "я" if cursor not in words else cursor
+            last_words = [cursor]
+            sentence = cursor
 
-            if level < 2:
-                level = 2
-            sentence = []
-            word = random.choice(words) if word not in words else word
-            sentence.append(word)
-            for n in range(1, level):
-                indexes = [i for i in range(n, len(words)) if
-                           all(map(lambda x: sentence[-(x + 1)] == words[i - (x + 1)], range(n)))]
+            while cursor != '.' and len(sentence) <= 1900:
+                indexes = []
+                for i in range(level - 1, count_words):
+                    if all(map(lambda x: last_words[-x] == words[i - x], range(1, min(len(last_words), level)))):
+                        indexes.append(i)
 
-                word = "."
-                for i in range(len(indexes)):
-                    try:
-                        word = words[random.choice(indexes)]
-                    except IndexError:
-                        if i != len(indexes):
-                            break
-                sentence += [word]
-                if word == '.':
-                    break
-            while word != '.' and sum(map(len, sentence)) <= 1900:
-                indexes = [i for i in range(level - 1, len(words)) if all(map(lambda x: sentence[-x] == words[i - x],
-                                                                              range(1, level)))]
-                word = words[random.choice(indexes)]
-                sentence += [word]
+                assert indexes, "Упс. Я тут остановился и в общем... упал!!"
 
-            await ctx.send(' '.join(sentence))
+                cursor = words[random.choice(indexes)]
+                if cursor.isalnum():
+                    sentence += " "
+                sentence += cursor
+
+                last_words.append(cursor)
+                if len(last_words) > level:
+                    del last_words[0]
+
+                await asyncio.sleep(0.00001)
+
+            await ctx.reply(embed=BotEmbed(ctx=ctx, description=' '.join(sentence)))
 
     @commands.command('say', enabled=False)
     @commands.is_owner()
@@ -178,7 +183,8 @@ class FunCog(Cog, name="Веселье"):
             field[bomb[1]][bomb[0]] = "||:boom:||"
 
         map_sapper = "\n".join(map("".join, field))
-        await ctx.reply(embed=BotEmbed(ctx=ctx, title=f"Сапёр {width}x{height} с {count} бомбами", description=map_sapper))
+        await ctx.reply(
+            embed=BotEmbed(ctx=ctx, title=f"Сапёр {width}x{height} с {count} бомбами", description=map_sapper))
 
 
 def setup(bot: Bot):

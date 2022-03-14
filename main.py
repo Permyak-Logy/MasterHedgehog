@@ -25,9 +25,9 @@ def init_logging(logging_conf: dict):
 
 
 def get_cogs():
-    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + ['warframe.py', 'APs.py', 'game_activity.py']),
-                        os.listdir('cogs'))
-    cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names)) + ['PLyBot.info', 'PLyBot.api']
+    cogs_names = filter(not_in(['__init__.py', '__pycache__'] + [
+        'warframe.py', 'APs.py', 'game_activity.py', 'statistic.py']), os.listdir('cogs'))
+    cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names)) + ['PLyBot.info']  # , 'PLyBot.api']
     return cogs
 
 
@@ -51,9 +51,9 @@ def main():
         root_id=users_conf['root'],
         owner_ids=users_conf['admins'],
 
-        version=("Beta 0.15.1", datetime.date(day=20, month=2, year=2022)),
+        version=("Beta 0.15.2", datetime.date(day=14, month=3, year=2022)),
         footer=bot_conf['footer'],
-        colour=discord.Colour.from_rgb(50, 50, 50),
+        colour=discord.Colour.from_rgb(*bot_conf['colour']),
 
         ignore_errors=(commands.CommandNotFound, commands.CheckFailure),
         bot_type=TypeBot.both,

@@ -9,7 +9,7 @@ from discord.ext import commands
 import db_session
 from PLyBot import Bot
 from PLyBot import Cog, join_string, get_time_from_string, BotEmbed
-from db_session import SqlAlchemyBase, BaseConfigMix, NONE, MIN_DATETIME
+from db_session import SqlAlchemyBase, BaseConfigMix, NONE
 from db_session.base import Member
 
 
@@ -20,7 +20,7 @@ class ModerationConfig(SqlAlchemyBase, BaseConfigMix):
                                  primary_key=True, nullable=False)
     mute_role = sqlalchemy.Column(sqlalchemy.Integer, nullable=True, unique=True)
     access = sqlalchemy.Column(sqlalchemy.String, nullable=False, default='{}')
-    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=MIN_DATETIME)
+    active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
 
     def __str__(self):
         return f'{self.__class__.__name__}(id={self.guild_id} mute_role={self.mute_role})'

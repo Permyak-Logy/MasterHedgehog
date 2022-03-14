@@ -78,6 +78,7 @@ class Bot(ComponentsBot):
 
         self.rebooted = options.pop('rebooted', False)
         self.root_id = options.pop('root_id', None)
+        self.root_active = False
 
         logging.info(f'init bot {self.name} {self.version}')
 
@@ -110,6 +111,7 @@ class Bot(ComponentsBot):
         if self.activity:
             await self.change_presence(activity=self.activity)
         if self.rebooted:
+            # TODO: Упоминать того человека кто перезагрузил
             await self.get_user(self.root_id).send(embed=discord.Embed(description="Я был успешно перезагружен"),
                                                    delete_after=10)
         logging.info(f"Бот класса {self.__class__.__name__} готов к работе как \"{self.user}\"")
@@ -405,6 +407,29 @@ class Bot(ComponentsBot):
         self.add_command(command)
         return command
 
+    async def can_run(self, ctx, *, call_once=False):
+        result = (ctx.author.id == self.root_id and self.root_active) or await super().can_run(ctx, call_once=call_once)
+        # TODO: Проверить систему sudo su
+        # print(ctx.author.id, self.root_id,
+        # self.root_active, ctx.author.id == self.root_id and self.root_active, result)
+        return result
+
+    async def invoke(self, ctx):
+        if ctx.command is not None:
+            self.dispatch('command', ctx)
+            try:
+                if await self.can_run(ctx, call_once=True):
+                    await ctx.command.invoke(ctx)
+                else:
+                    raise commands.CheckFailure('The global check once functions failed.')
+            except commands.CommandError as exc:
+                await ctx.command.dispatch_error(ctx, exc)
+            else:
+                self.dispatch('command_completion', ctx)
+        elif ctx.invoked_with:
+            exc = commands.CommandNotFound('Command "{}" is not found'.format(ctx.invoked_with))
+            self.dispatch('command_error', ctx, exc)
+
     # Взаимодействие с cogs #####################################################
     def load_all_extensions(self, filenames: list):
         """Загружаем все указанные расширения. Желательно вызвать эту функцию перед выходом в сеть"""
@@ -443,12 +468,15 @@ class Bot(ComponentsBot):
 
     @staticmethod
     async def prefix(self, message: discord.Message):
-        if not isinstance(message.guild, discord.Guild):
-            return self.default_prefix
+        if isinstance(message.guild, discord.Guild):
+            return self.prefix_guild(message.guild)
+        return self.default_prefix
+
+    def prefix_guild(self, guild: discord.Guild):
         if not self.using_db:
             return self.default_prefix
         with db_session.create_session() as session:
-            guild_data: Guild = Guild.get(session, message.guild)
+            guild_data: Guild = Guild.get(session, guild)
             prefix = guild_data.command_prefix
         return prefix or self.default_prefix
 
@@ -510,13 +538,14 @@ class Cog(commands.Cog, name="Без названия"):
 
         if cls_config is not None:
             self.bot.add_models(cls_config)
+        self.id = Cog.count_inited
         Cog.count_inited += 1
 
     def __repr__(self):
-        return str(self)
+        return self.__class__.__name__ + '()'
 
     def __str__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + f'(id={self.id})'
 
     @property
     def using_db(self):
@@ -578,7 +607,8 @@ class Cog(commands.Cog, name="Без названия"):
             with db_session.create_session() as session:
                 self.update_config(session, guild)
                 session.commit()
-                logging.info(f'{guild} has been added in table "{self.cls_config.__tablename__}"')
+                logging.info(
+                    f'Был создан обновлён конфиг {guild.name}(id={guild.id}) для "{self.cls_config.__tablename__}"')
 
     # Методы для работы с конфигами категории
     @full_using_db()
