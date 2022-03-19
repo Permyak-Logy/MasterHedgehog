@@ -51,7 +51,7 @@ def main():
         root_id=users_conf['root'],
         owner_ids=users_conf['admins'],
 
-        version=("Beta 0.15.2", datetime.date(day=14, month=3, year=2022)),
+        version=("Beta 0.15.3", datetime.date(day=19, month=3, year=2022)),
         footer=bot_conf['footer'],
         colour=discord.Colour.from_rgb(*bot_conf['colour']),
 

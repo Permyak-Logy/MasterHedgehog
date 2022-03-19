@@ -31,7 +31,7 @@ class FunConfig(SqlAlchemyBase, BaseConfigMix):
     access = Column(String, nullable=False, default='{}')
     active_until = Column(Date, nullable=True, default=None)
 
-
+# TODO: Счётчик сообщений в канале
 class FunCog(Cog, name="Веселье"):
     def __init__(self, bot: Bot):
         super().__init__(bot, cls_config=FunConfig, emoji_icon='😂')
@@ -121,7 +121,7 @@ class FunCog(Cog, name="Веселье"):
 
                 await asyncio.sleep(0.00001)
 
-            await ctx.reply(embed=BotEmbed(ctx=ctx, description=' '.join(sentence)))
+            await ctx.reply(embed=BotEmbed(ctx=ctx, description=sentence))
 
     @commands.command('say', enabled=False)
     @commands.is_owner()

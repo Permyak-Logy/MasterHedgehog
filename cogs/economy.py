@@ -139,6 +139,7 @@ class EconomyCog(Cog, name='Экономика'):
         with db_session.create_session() as session:
             for member in self.bot.get_all_members():
                 DBEconomyTools.update_features_member(session, member)
+                DBEconomyTools.update_balance_member(session, member)
             session.commit()
 
     @commands.Cog.listener('on_guild_join')
@@ -698,16 +699,18 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.reply(embed=embed)
 
     @commands.Cog.listener('on_member_join')
-    async def _listener_auto_add_balance_member(self, member: discord.Member):
+    async def _listener_auto_add_member_data(self, member: discord.Member):
         with db_session.create_session() as session:
             DBEconomyTools.update_balance_member(session, member)
+            DBEconomyTools.update_features_member(session, member)
             session.commit()
 
     @commands.Cog.listener('on_member_remove')
-    async def _listener_auto_remove_balance_member(self, member: discord.Member):
+    async def _listener_auto_remove_member_data(self, member: discord.Member):
         with db_session.create_session() as session:
             if DBEconomyTools.get_balance_member(session, member):
                 DBEconomyTools.delete_balance_member(session, member)
+                DBEconomyTools.delete_features_member(session, member)
                 session.commit()
 
     # =======================================================================================================
@@ -788,9 +791,9 @@ class EconomyCog(Cog, name='Экономика'):
 
             embed = BotEmbed(ctx=ctx,
                              title=f"Магазин сервера",
-                             description=f"Чтобы купить предмет используйте `{self.bot.command_prefix}buy`\n"
+                             description=f"Чтобы купить предмет используйте `{ctx.prefix}buy`\n"
                                          f"Чтобы просматривать магазин используйте "
-                                         f"`{self.bot.command_prefix}shop page`\n"
+                                         f"`{ctx.prefix}shop page`\n"
                                          f"где `page` - номер страницы"
                              )
             embed.set_author(name=str(ctx.guild), icon_url=ctx.guild.icon_url)
@@ -808,7 +811,7 @@ class EconomyCog(Cog, name='Экономика'):
                 pass
             await ctx.send(embed=embed)
 
-    @_group_shop.command()
+    @_group_shop.command(name='buy')
     @commands.guild_only()
     async def _cmd_shop_buy(self, ctx: Context, item_id: int):
         """
@@ -836,11 +839,11 @@ class EconomyCog(Cog, name='Экономика'):
                 await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно!", description="Роль добавлена в ваш инвентарь",
                                               colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
-    @_group_shop.command()
+    @_group_shop.command(name='add')
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def _cmd_shop_add_item(self, ctx: Context, role: discord.Role, price: int, *description):
+    async def _cmd_shop_add(self, ctx: Context, role: discord.Role, price: int, *description):
         """
         Добавляет предмет в магазин
         """
@@ -857,11 +860,11 @@ class EconomyCog(Cog, name='Экономика'):
             await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно!", description="Предмет добавлен в магазин",
                                           colour=discord.colour.Color.from_rgb(0, 255, 0)))
 
-    @_group_shop.command()
+    @_group_shop.command(name='remove')
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def remove_item(self, ctx: Context, item_id: int):
+    async def _cmd_shop_remove(self, ctx: Context, item_id: int):
         """
         Убирает предмет из магазина
         """

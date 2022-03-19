@@ -17,6 +17,7 @@ class StatisticConfig(SqlAlchemyBase, BaseConfigMix):
     active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
 
 
+# TODO: Активность за 2 недели
 class StatisticCog(Cog, name='Статистика'):
     """
     Модуль для получения различных случайностей!
