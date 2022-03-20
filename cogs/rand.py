@@ -73,7 +73,7 @@ class RandomCog(Cog, name='Случайности'):
         await ctx.reply(str(random.randrange(start, end)))
 
     @commands.command('шар', aliases=['ball', 'ш', 'q'])
-    async def _cmd_ball(self, ctx: commands.Context, question: str):
+    async def _cmd_ball(self, ctx: commands.Context, *, question: str):
         """
         Пусть шар судьбы ответит на ваш вопрос
         """

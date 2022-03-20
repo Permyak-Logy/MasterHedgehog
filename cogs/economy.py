@@ -20,7 +20,7 @@ from db_session import BaseConfigMix, SqlAlchemyBase, bigint, Session
 
 # TODO: Команда для снятия роли
 # TODO: Сделать подробные ошибки при отсутствии класса
-
+# TODO: Pymorphy
 
 class EconomyConfig(SqlAlchemyBase, BaseConfigMix):
     __tablename__ = "economy_configs"

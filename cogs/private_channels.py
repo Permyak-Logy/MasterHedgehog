@@ -152,6 +152,8 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
                     pass
             elif categories is not None:
                 for category in categories:
+                    if not category:
+                        continue
                     for channel in category.voice_channels:
                         if not channel.members and channel not in channels_add:
                             try:

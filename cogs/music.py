@@ -78,20 +78,20 @@ class MusicCog(Cog, name='Музыка YouTube'):
         """Команды для управления музыкой"""
         await ctx.just_send_help()
 
-    @_group_music.command('join')
+    @_group_music.command('сюда', 'join')
     @commands.guild_only()
-    async def _cmd_music_join(self, ctx: Context, *, channel: discord.VoiceChannel):
-        """Joins a voice channel"""
-
+    async def _cmd_music_join(self, ctx: Context, *, channel: discord.VoiceChannel = None):
+        """Присоединяется к голосовому каналу"""
+        assert channel, "Не указан голосовой канал для присоединения"
         if ctx.voice_client is not None:
             return await ctx.voice_client.move_to(channel)
 
         await channel.connect()
 
-    @_group_music.command('play')
+    @_group_music.command(name='играть', aliase='play')
     @commands.guild_only()
-    async def _cmd_music_play(self, ctx: Context, *, url):
-        """Streams from a url (same as yt, but doesn't pre download)"""
+    async def _cmd_music_play(self, ctx: Context, *, url: str):
+        """Воспроизводит музыку по указанной ссылке или названию"""
 
         if ctx.voice_client is None:
             assert ctx.author.voice, "Author not connected to a voice channel."
@@ -122,21 +122,22 @@ class MusicCog(Cog, name='Музыка YouTube'):
         await msg.add_reaction('🔊')
         self.__online_music_players[ctx.guild.id] = msg.id
 
-    @_group_music.command('volume')
+    @_group_music.command(name='громкость', aliases=['volume'])
     @commands.guild_only()
     async def _cmd_music_volume(self, ctx: Context, volume: int):
-        """Changes the player's volume"""
+        """Изменяет уровень громкости"""
 
         if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
+            return await ctx.reply("Я не сижу сейчас в голосовом канале")
 
         ctx.voice_client.source.volume = volume / 100
-        await ctx.send(f"Changed volume to {volume}%")
+        await ctx.send(f"Изменена громкость на {volume}%")
 
-    @_group_music.command('stop')
+    @_group_music.command(name='стоп', aliases=['stop'])
     @commands.guild_only()
     async def _cmd_music_stop(self, ctx: Context):
-        """Stops and disconnects the bot from voice"""
+        """Останавливает музыку и выходит из канала"""
+        assert ctx.voice_client, "Я не сижу щас в голосовом канале"
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
 
@@ -149,10 +150,10 @@ class MusicCog(Cog, name='Музыка YouTube'):
             msg: discord.Message = await self.bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
         except (discord.NotFound, AttributeError):
             return
-        await msg.remove_reaction(payload.emoji, payload.member)
 
         if payload.member.bot:
             return
+        await msg.remove_reaction(payload.emoji, payload.member)
 
         voice_client: discord.VoiceClient = msg.guild.voice_client
         if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
