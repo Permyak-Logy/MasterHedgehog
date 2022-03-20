@@ -18,7 +18,7 @@ class Guild(SqlAlchemyBase):
     command_prefix = Column(String, nullable=True, default=None)
 
     language_cmd = Column(String, default="ru")
-    language_text = Column(String, default="en")
+    language_text = Column(String, default="ru")
     timezone = Column(String, default="Europe/Moscow")
     system_color = Column(String, default="#8A3B03")
 

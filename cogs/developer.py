@@ -28,8 +28,9 @@ class DeveloperCog(Cog, name="Для разработчиков"):
 
     @commands.group(name='sudo')
     @commands.is_owner()
-    async def _group_sudo(self, ctx: Context):
+    async def _group_sudo(self, ctx: Context, command: str = None, *args: str):
         """Вызов root команд"""
+        # TODO: Сделать разовое выполнение от root
         await ctx.just_send_help()
 
     @_group_sudo.command('cogs')

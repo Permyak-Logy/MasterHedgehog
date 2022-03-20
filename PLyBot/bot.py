@@ -27,7 +27,6 @@ logging = logging.getLogger(__name__)
 # TODO: /команды
 # TODO: Аватар
 # TODO: Ранговая система
-# TODO: Супер пользователь (Команды для управления только мной)
 class Bot(ComponentsBot):
     def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
                  turn_on_api_server=False, **options):
@@ -124,6 +123,7 @@ class Bot(ComponentsBot):
 
     async def on_disconnect(self):
         logging.info(f"[disconnect] Бот {self.user} отключился от discord")
+        Cog.count_ready = 0
 
     async def on_message(self, message: discord.Message):
         if self.using_db:
@@ -300,9 +300,13 @@ class Bot(ComponentsBot):
             elif isinstance(exception, commands.NoPrivateMessage):
                 embed.add_field(name="Сообщение", value="Эта команда не доступна в личных чатах")
             elif isinstance(exception, commands.BotMissingPermissions):
-                embed.add_field(name="Сообщение", value="У меня не достаточно прав!")
+                perms = [f"`{perm.replace('_', ' ').replace('guild', 'server').title()}`" for perm in
+                         exception.missing_perms]
+                embed.add_field(name="Сообщение", value=f"У меня не достаточно прав! (Необходимы: {', '.join(perms)})")
             elif isinstance(exception, commands.MissingPermissions):
-                embed.add_field(name="Сообщение", value="У вас недостаточно прав!")
+                perms = [f"`{perm.replace('_', ' ').replace('guild', 'server').title()}`" for perm in
+                         exception.missing_perms]
+                embed.add_field(name="Сообщение", value=f"У вас недостаточно прав! (Необходимы: {', '.join(perms)})")
             elif isinstance(exception, commands.NSFWChannelRequired):
                 embed.add_field(name="Сообщение", value="Эта команда доступна только в NSFW каналах")
             else:
@@ -388,7 +392,7 @@ class Bot(ComponentsBot):
 
         req_help_cmd = ctx.is_requested_help()
         if req_help_cmd:
-            # Если в конце "?" на поиск help команды то выводим его
+            # Если в конце "?" на поиск help команды, то выводим его
             help_command: HelpCommand = self.help_command.copy()
             help_command.context = ctx
             invoked_command_name = ctx.message.content[len(ctx.prefix):-2]
@@ -396,7 +400,6 @@ class Bot(ComponentsBot):
             await help_command.command_callback(ctx, command=invoked_command_name)
 
         else:
-            # В случае отправки help мы вызываем функцию
             await self.invoke(ctx)
 
         if ctx.command:
@@ -406,29 +409,6 @@ class Bot(ComponentsBot):
         command = self.remove_command(name)
         self.add_command(command)
         return command
-
-    async def can_run(self, ctx, *, call_once=False):
-        result = (ctx.author.id == self.root_id and self.root_active) or await super().can_run(ctx, call_once=call_once)
-        # TODO: Проверить систему sudo su
-        # print(ctx.author.id, self.root_id,
-        # self.root_active, ctx.author.id == self.root_id and self.root_active, result)
-        return result
-
-    async def invoke(self, ctx):
-        if ctx.command is not None:
-            self.dispatch('command', ctx)
-            try:
-                if await self.can_run(ctx, call_once=True):
-                    await ctx.command.invoke(ctx)
-                else:
-                    raise commands.CheckFailure('The global check once functions failed.')
-            except commands.CommandError as exc:
-                await ctx.command.dispatch_error(ctx, exc)
-            else:
-                self.dispatch('command_completion', ctx)
-        elif ctx.invoked_with:
-            exc = commands.CommandNotFound('Command "{}" is not found'.format(ctx.invoked_with))
-            self.dispatch('command_error', ctx, exc)
 
     # Взаимодействие с cogs #####################################################
     def load_all_extensions(self, filenames: list):

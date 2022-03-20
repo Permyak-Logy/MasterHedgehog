@@ -41,8 +41,7 @@ class PythonConsoleCog(Cog, name='PyConsole'):
     @commands.command('eval', aliases=['ev'])
     @commands.is_owner()
     async def _cmd_eval(self, ctx: commands.Context, inc_str: Optional[bool] = True, inc_repr: Optional[bool] = False,
-                        *,
-                        exp: str):
+                        *, exp: str):
         """
         ```python
         return eval(exp)```

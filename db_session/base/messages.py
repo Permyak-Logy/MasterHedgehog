@@ -11,7 +11,8 @@ class Message(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
 
     guild = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('guilds.id'))
-    author = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('members.id'), nullable=False)
+    # TODO: Изменить на users
+    author = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'), nullable=False)
     channel = sqlalchemy.Column(sqlalchemy.Integer)
 
     content = sqlalchemy.Column(sqlalchemy.String, nullable=False)

@@ -8,6 +8,7 @@ from .extra import get_obj, join_string, get_time_from_string, cast_status_to_in
 from .help import HelpCommand
 from .info import InfoCog
 from .embed import BotEmbed
+from . import overrides
 
 
 def main(*args, db_con: str = None, **kwargs):

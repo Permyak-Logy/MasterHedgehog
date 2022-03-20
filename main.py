@@ -55,7 +55,7 @@ def main():
         footer=bot_conf['footer'],
         colour=discord.Colour.from_rgb(*bot_conf['colour']),
 
-        ignore_errors=(commands.CommandNotFound, commands.CheckFailure),
+        ignore_errors=(commands.CommandNotFound, ),  # commands.CheckFailure),
         bot_type=TypeBot.both,
         help_command=HelpCommand(width=70),
         rebooted='--rebooted' in sys.argv,
