@@ -65,6 +65,7 @@ class MusicConfig(SqlAlchemyBase, BaseConfigMix):
     active_until = sqlalchemy.Column(sqlalchemy.Date, nullable=True, default=None)
 
 
+# TODO: Сделать через discord_components
 class MusicCog(Cog, name='Музыка YouTube'):
     # TODO: Сделать обновление плейера при завершении игры музыки
 
@@ -72,13 +73,13 @@ class MusicCog(Cog, name='Музыка YouTube'):
         super().__init__(bot, cls_config=MusicConfig, emoji_icon='🎧')
         self.__online_music_players = {}
 
-    @commands.group('music')
+    @commands.group(name='музыка', aliases=['music'])
     @commands.guild_only()
     async def _group_music(self, ctx: Context):
         """Команды для управления музыкой"""
         await ctx.just_send_help()
 
-    @_group_music.command('сюда', 'join')
+    @_group_music.command('сюда', aliases=['join'])
     @commands.guild_only()
     async def _cmd_music_join(self, ctx: Context, *, channel: discord.VoiceChannel = None):
         """Присоединяется к голосовому каналу"""
@@ -88,7 +89,7 @@ class MusicCog(Cog, name='Музыка YouTube'):
 
         await channel.connect()
 
-    @_group_music.command(name='играть', aliase='play')
+    @_group_music.command(name='играть', aliases=['play'])
     @commands.guild_only()
     async def _cmd_music_play(self, ctx: Context, *, url: str):
         """Воспроизводит музыку по указанной ссылке или названию"""

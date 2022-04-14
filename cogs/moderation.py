@@ -13,6 +13,7 @@ from db_session import SqlAlchemyBase, BaseConfigMix, NONE
 from db_session.base import Member
 
 
+# TODO: Поиск удалённых сообщений
 class ModerationConfig(SqlAlchemyBase, BaseConfigMix):
     __tablename__ = "moderation_configs"
 
@@ -48,7 +49,7 @@ class ModerationCog(Cog, name="Модерация"):
 
     В некоторые команды можно указывать время. Это время указывается в виде Xq где X это число (Если дробь то точку
     использовать), а q это первая буква единиц измерений с маленькой буквы. На данный момент доступно
-    определение дней (д), часов (ч), минут (м), секунд (с)
+    определение дней (д), часов (ч), минут (м), секунд (с).
     """
 
     def __init__(self, bot: Bot):
@@ -64,7 +65,7 @@ class ModerationCog(Cog, name="Модерация"):
     @commands.bot_has_permissions(ban_members=True)
     async def _cmd_ban(self, ctx: commands.Context, member: discord.Member, time: str = "F", *reason: str):
         """
-        Банит  участника сервера. Если был указано время не равное "F",
+        Банит участника сервера. Если был указано время не равное "F",
         то он забанит лишь на это время, а после снимает бан.
         Можно также указать причину, но это не обязательно.
         """

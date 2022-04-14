@@ -115,9 +115,9 @@ class ActivityRanksCog(Cog, name="Ранги Активности"):
             your_position = RanksMembers.get_position(session, ctx.author)
         embed = BotEmbed(ctx=ctx, title="Самые активные люди")
 
-        names = "\n".join(f"{i}. {member.mention}" for i, (member, _, __) in enumerate(top[:10], start=1))
-        level = "\n".join(f"{self.level_from_rank(exp)} **ур.**" for _, exp, __ in top[:10])
-        kvass = "\n".join(f"\\🍺 {kvass}" for _, __, kvass in top[:10])
+        names = "\n\n".join(f"{i}. {member.mention}" for i, (member, _, __) in enumerate(top[:10], start=1))
+        level = "\n\n".join(f"{self.level_from_rank(exp)} **ур.**" for _, exp, __ in top[:10])
+        kvass = "\n\n".join(f"\\🍺 {kvass}" for _, __, kvass in top[:10])
 
         embed.add_field(name="Имя", value=names)
         embed.add_field(name="Уровень", value=level)
