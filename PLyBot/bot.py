@@ -27,6 +27,8 @@ logging = logging.getLogger(__name__)
 # TODO: /команды
 # TODO: Аватар
 # TODO: Ранговая система
+
+# noinspection PyMethodMayBeStatic
 class Bot(ComponentsBot):
     def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
                  turn_on_api_server=False, **options):
@@ -138,6 +140,12 @@ class Bot(ComponentsBot):
 
                 session.commit()
 
+        if isinstance(message.channel, discord.DMChannel):
+            if not message.author.bot and message.author.id != self.root_id:
+                await self.get_user(self.root_id).send(
+                    embed=discord.Embed(description=message.content).set_author(
+                        name=message.author.display_name, icon_url=message.author.avatar_url).set_footer(
+                        text=f"DT: {message.created_at} id:{message.author.id}"))
         await self.process_commands(message)
 
     @run_if_ready_db(is_async=True)
@@ -344,7 +352,6 @@ class Bot(ComponentsBot):
     async def on_after_invoke(self, _):
         self.count_invokes += 1
 
-    # noinspection PyMethodMayBeStatic
     async def on_before_invoke(self, ctx: commands.Context):
         message: discord.Message = ctx.message
         if message:
@@ -400,10 +407,9 @@ class Bot(ComponentsBot):
             await help_command.command_callback(ctx, command=invoked_command_name)
 
         else:
+            if ctx.command:
+                logging.info(f"[INVOKE] [{ctx.command}] {ctx.args} {ctx.kwargs}")
             await self.invoke(ctx)
-
-        if ctx.command:
-            logging.info(f"[INVOKE] [{ctx.command}] {ctx.args} {ctx.kwargs}")
 
     def reload_command(self, name: str) -> commands.Command:
         command = self.remove_command(name)
@@ -591,7 +597,6 @@ class Cog(commands.Cog, name="Без названия"):
                     f'Был создан обновлён конфиг {guild.name}(id={guild.id}) для "{self.cls_config.__tablename__}"')
 
     # Методы для работы с конфигами категории
-    @full_using_db()
     def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[BaseConfigMix]:
         assert self.cls_config, "Метод может быть использован только при определённом заранее cls_config"
         guild_id = guild.id if isinstance(guild, discord.Guild) else guild

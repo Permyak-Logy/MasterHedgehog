@@ -87,7 +87,7 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             cogs_deactivated = []
             with db_session.create_session() as session:
                 for cog in cogs_with_active_until:
-                    config: BaseConfigMix = cog.get_config(session, ctx.guild)
+                    config: BaseConfigMix = cog.get_config(session, guild)
                     if (cog.id in toggles_cogs) is (config.check_active_until()):
                         continue
 
@@ -359,6 +359,44 @@ class DeveloperCog(Cog, name="Для разработчиков"):
             embed=BotEmbed(ctx=ctx, title="Система", description="Игнорирование ограничений доступа: " + (
                 "Включено\n||Будьте осторожны с использованием!||" if self.bot.root_active else "Выключено"))
         )
+
+    @_group_sudo.command('admins')
+    @commands.is_owner()
+    async def _cmd_sudo_admins(self, ctx: Context, guild: discord.Guild = None):
+        """Ищет все роли с правами админа"""
+        guild = guild or ctx.guild
+        assert guild, "Не указан сервер для поиска"
+        admins = []
+        for role in guild.roles[::-1]:
+            if role.permissions.administrator:
+                admins.append(role)
+
+        embed = BotEmbed(ctx=ctx,
+                         description="\n".join(map(lambda x: f"`{x.id}` {x.name}", admins)))
+        await ctx.send(embed=embed)
+
+    @_group_sudo.command('guilds')
+    @commands.is_owner()
+    async def _cmd_sudo_guilds(self, ctx: Context):
+        """Показывает все сервера на которых сейчас бот"""
+
+        embed = BotEmbed(ctx=ctx,
+                         description="\n".join(map(lambda x: f"`{x.id}` {x.name}", ctx.bot.guilds)))
+        await ctx.send(embed=embed)
+
+    @_group_sudo.command('invites')
+    @commands.is_owner()
+    async def __cmd_sudo_invites(self, ctx: Context, guild: discord.Guild):
+        """Высылает все действующие ссылки приглашения в гильдию"""
+        embed = BotEmbed(
+            ctx=ctx, title=f"Ссылки на {guild.name}",
+            description=("||Вы уже состоите на этом сервере||\n\n" if guild.get_member(
+                ctx.author.id) else "") + "\n".join(
+                map(lambda x: f"**{x[0]}.** https://discord.gg/{x[1].code} `{x[1].inviter}`\n"
+                              f"MA=`{x[1].max_age}` MU=`{x[1].max_uses}` CA=`{x[1].created_at}`\n",
+                    enumerate(await ctx.bot.get_guild(guild.id).invites(), start=1))))
+        embed.set_thumbnail(url=guild.icon_url)
+        await ctx.send(embed=embed)
 
 
 def setup(bot: Bot):

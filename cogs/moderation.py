@@ -167,6 +167,8 @@ class ModerationCog(Cog, name="Модерация"):
         async with ctx.typing():
             if await self.bot.is_owner(ctx.author):
                 check = eval(f'lambda msg: {" ".join(check)}') if check else None
+            else:
+                check = None
 
             await ctx.message.delete()
 

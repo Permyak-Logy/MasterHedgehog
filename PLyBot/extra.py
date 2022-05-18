@@ -5,6 +5,7 @@ import re
 from typing import Union, Optional, Type, Iterable, Callable
 from discord.ext import commands
 from discord import Status
+import asyncio
 
 __logging = logging.getLogger(__name__)
 __old_f = commands.group
@@ -122,6 +123,16 @@ class Permissions:
             raise TypeError(f'Передан неизвестный ключ {flags}')
 
         return flag
+
+
+async def timer(sec: float, func):
+    await asyncio.sleep(sec)
+    return func()
+
+
+async def atimer(sec: float, afunc):
+    await asyncio.sleep(sec)
+    return await afunc
 
 
 def group(name=None, invoke_without_command=True, **attrs):

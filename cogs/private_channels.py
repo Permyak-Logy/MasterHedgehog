@@ -118,7 +118,7 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
                                           if new_channels else "Убраны все голосовые каналы для создания приватных каналов")
                              )
 
-            await interaction.send(embed=embed, ephemeral=False, delete_after=60)
+            await interaction.send(embed=embed, ephemeral=True, delete_after=60)
         finally:
             await msg.delete()
 
