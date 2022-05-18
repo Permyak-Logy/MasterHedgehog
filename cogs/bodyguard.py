@@ -1,4 +1,5 @@
-from typing import Optional, Union, List
+import asyncio
+from typing import List
 
 import discord
 import sqlalchemy
@@ -8,7 +9,6 @@ from discord_components import Interaction, Select, SelectOption
 import db_session
 from PLyBot import Bot, Cog, atimer, Context, BotEmbed
 from db_session import BaseConfigMix, SqlAlchemyBase
-import asyncio
 
 
 # TODO: Роли бустеры
