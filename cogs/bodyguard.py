@@ -97,11 +97,13 @@ class BodyguardCog(Cog, name='Телохранитель'):
     @commands.Cog.listener('on_member_remove')
     async def _listener_auto_remove_member_data(self, member: discord.Member):
         with db_session.create_session() as session:
-            session.remove(BodyguardMember.query(session, member))
+            session: db_session.Session
+            session.delete(BodyguardMember.query(session, member))  # TODO: больше нет session.remove
             session.commit()
 
     @commands.Cog.listener('on_member_update')
     async def _listener_save_member_roles(self, before: discord.Member, after: discord.Member):
+        await self.bot.wait_until_ready()
         with db_session.create_session() as session:
             config = self.get_config(session, before.guild)
             if not config.check_active_until():
@@ -128,7 +130,7 @@ class BodyguardCog(Cog, name='Телохранитель'):
     @commands.group("safer")
     # @commands.has_permissions(manage_roles=True)  # TODO: Включить потом
     @commands.bot_has_permissions(manage_roles=True)
-    @commands.is_owner()
+    # @commands.is_owner()
     async def _group_safer(self, ctx: Context, member: discord.Member = None):
         """Вызывает настройщика Телохранителя для участника"""
 
@@ -246,7 +248,10 @@ class BodyguardCog(Cog, name='Телохранитель'):
 
             await interaction.send(embed=embed, ephemeral=True, delete_after=60)
         finally:
-            await msg.delete()
+            try:
+                await msg.delete()
+            except discord.NotFound:
+                pass
 
     async def full_safe(self, member: discord.Member):
         with db_session.create_session() as session:

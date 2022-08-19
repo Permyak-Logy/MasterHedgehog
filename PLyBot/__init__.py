@@ -1,4 +1,4 @@
-from .api import AccessCog, ApiKey, BaseApiBP, JSON_STATUS
+from .api import ApiKey, BaseApiBP, JSON_STATUS, JsonParam
 from .bot import Bot, Cog, Context
 from .extra import Check, HRF
 from .extra import ONLINE, OFFLINE, IDLE, DND, INVISIBLE, T
@@ -7,6 +7,7 @@ from .extra import full_using_db, run_if_ready_db, plug_func, plug_afunc, timer,
 from .extra import get_obj, join_string, get_time_from_string, cast_status_to_int, get_any
 from .help import HelpCommand
 from .info import InfoCog
+from .access import AccessCog
 from .embed import BotEmbed
 from . import overrides
 

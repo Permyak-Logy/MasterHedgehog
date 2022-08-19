@@ -30,8 +30,12 @@ logging = logging.getLogger(__name__)
 
 # noinspection PyMethodMayBeStatic
 class Bot(ComponentsBot):
+    bot: "Bot" = None
+
     def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
                  turn_on_api_server=False, **options):
+        Bot.bot = self
+
         self.default_prefix = options['command_prefix']
         options['command_prefix'] = self.prefix
 
@@ -72,7 +76,6 @@ class Bot(ComponentsBot):
         self.__ready_db = False
         if turn_on_api_server:
             self.flask_app = Flask(app_name)
-            self.flask_app.route('/')(self.index_api)
 
         else:
             self.flask_app = None
@@ -371,21 +374,24 @@ class Bot(ComponentsBot):
             self.__models[model.__name__] = model
 
     def add_cog_blueprint(self, blueprint, *args, url_prefix: str, **kwargs):
+        url_prefix = f"/api{url_prefix}"
+
         self.add_blueprint(blueprint.blueprint, *args, url_prefix=url_prefix, **kwargs)
-
         self.__cog_blueprints[url_prefix] = blueprint
-
-        if self.flask_app:  # Добавляем в сам flask только если мы его вкл.
-            self.flask_app.register_blueprint(blueprint.blueprint, *args, url_prefix=url_prefix, **kwargs)
 
     def add_blueprint(self, blueprint: Blueprint, *args, url_prefix: str, **kwargs):
         if url_prefix in self.__blueprints:
             raise ValueError(f"На prefix_url='{url_prefix}' уже зарегистрирован blueprint")
 
         self.__blueprints[url_prefix] = blueprint
-
         if self.flask_app:  # Добавляем в сам flask только если мы его вкл.
             self.flask_app.register_blueprint(blueprint, *args, url_prefix=url_prefix, **kwargs)
+
+    def get_cog_blueprints(self) -> dict:
+        return self.__cog_blueprints
+
+    def get_blueprints(self) -> dict:
+        return self.__blueprints
 
     def get_voice_client(self, guild: discord.Guild) -> Optional[VoiceClient]:
         return get(self.voice_clients, guild=guild)
@@ -443,14 +449,6 @@ class Bot(ComponentsBot):
         Member.update_all(session, self.get_all_members())
 
         logging.info('=' * 6 + 'Обновление бд выполнено' + '=' * 6)
-
-    # routes для Flask #####################################################
-    def index_api(self):
-        response = {"cogs": {}}
-        for url_rule, bp in self.__cog_blueprints.items():
-            if hasattr(bp, "cog"):
-                response["cogs"][bp.cog.qualified_name] = url_rule
-        return response
 
     @staticmethod
     async def prefix(self, message: discord.Message):
@@ -510,11 +508,15 @@ class Bot(ComponentsBot):
 
 
 class Cog(commands.Cog, name="Без названия"):
+    cog: "Cog"
+
     cls_config: BaseConfigMix
     count_inited = 0
     count_ready = 0
 
     def __init__(self, bot: Bot, cls_config=None, emoji_icon=None):
+        type(self).cog = self
+
         self.bot = bot
         self.emoji_icon = emoji_icon
         if cls_config is not None:
@@ -597,7 +599,7 @@ class Cog(commands.Cog, name="Без названия"):
                     f'Был создан обновлён конфиг {guild.name}(id={guild.id}) для "{self.cls_config.__tablename__}"')
 
     # Методы для работы с конфигами категории
-    def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> Optional[BaseConfigMix]:
+    def get_config(self, session: db_session.Session, guild: Union[discord.Guild, int]) -> "cls_config":
         assert self.cls_config, "Метод может быть использован только при определённом заранее cls_config"
         guild_id = guild.id if isinstance(guild, discord.Guild) else guild
         return session.query(self.cls_config).filter(self.cls_config.guild_id == guild_id).first()

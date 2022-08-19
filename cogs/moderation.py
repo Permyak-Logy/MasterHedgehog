@@ -162,7 +162,7 @@ class ModerationCog(Cog, name="Модерация"):
     async def _cmd_purge(self, ctx: commands.Context, limit: int, *check: str):
         """
         Чистит канал с лимитом очистки сообщений и проверяющей функцией check
-        Если limit == -1 то очистка будет всего канала
+        Если limit == -1 то очистка будет всего канала (msg)
         """
         async with ctx.typing():
             if await self.bot.is_owner(ctx.author):

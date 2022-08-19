@@ -57,7 +57,7 @@ class RolesConfig(SqlAlchemyBase, BaseConfigMix):
         self.auto_roles = ",".join(filter(bool, [str(role.id) for role in roles])) or None
 
 
-class RoleForReaction(SqlAlchemyBase):
+class NumRoleForReaction(SqlAlchemyBase):
     __tablename__ = "role_for_reaction"
     config_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('roles_configs.guild_id'),
                                   primary_key=True)
@@ -66,6 +66,7 @@ class RoleForReaction(SqlAlchemyBase):
     roles = sqlalchemy.Column(sqlalchemy.String, nullable=True)
 
     def get_roles(self, bot: Bot) -> list:
+        # noinspection PyTypeChecker
         guild = bot.get_guild(self.config_id)
         if self.roles != NONE and isinstance(guild, discord.Guild):
             roles = self.roles
@@ -77,6 +78,7 @@ class RoleForReaction(SqlAlchemyBase):
         self.roles = ",".join(filter(bool, [str(role.id) for role in roles])) or None
 
 
+
 class RolesMember:  # (SqlAlchemyBase):
     __tablename__ = "roles_members"
     config_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('role'))
@@ -86,6 +88,7 @@ class RolesMember:  # (SqlAlchemyBase):
     roles_ids = sqlalchemy.Column(sqlalchemy.String)
 
     def get_roles(self, bot: discord.Client) -> List[discord.Role]:
+        # noinspection PyTypeChecker
         guild: discord.Guild = bot.get_guild(self.config_id)
         if guild is None:
             return []
@@ -121,7 +124,7 @@ class RolesCog(Cog, name='Роли'):
     @commands.Cog.listener('on_ready')
     async def clear_unavailable_rfr(self):
         with db_session.create_session() as session:
-            all_rfr = session.query(RoleForReaction).all()
+            all_rfr = session.query(NumRoleForReaction).all()
             for rfr in all_rfr:
                 channel = self.bot.get_channel(rfr.channel_id)
                 try:
@@ -141,7 +144,7 @@ class RolesCog(Cog, name='Роли'):
     @commands.Cog.listener('on_raw_message_delete')
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
         with db_session.create_session() as session:
-            rfr = session.query(RoleForReaction).filter(RoleForReaction.message_id == payload.message_id).first()
+            rfr = session.query(NumRoleForReaction).filter(NumRoleForReaction.message_id == payload.message_id).first()
             if rfr:
                 session.delete(rfr)
             session.commit()

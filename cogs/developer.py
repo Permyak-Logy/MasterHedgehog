@@ -15,7 +15,7 @@ from PLyBot import Bot, Cog, join_string, Context, BotEmbed
 from db_session.base import Guild
 from db_session.const import MIN_DATETIME
 from db_session import BaseConfigMix
-
+from flask import Blueprint
 activate_parser = argparse.ArgumentParser()
 activate_parser.add_argument('-A', action="store_true")
 
@@ -397,6 +397,15 @@ class DeveloperCog(Cog, name="Для разработчиков"):
                     enumerate(await ctx.bot.get_guild(guild.id).invites(), start=1))))
         embed.set_thumbnail(url=guild.icon_url)
         await ctx.send(embed=embed)
+
+    @_group_sudo.command('routes_api')
+    @commands.is_owner()
+    async def __cmd_sudo_routes_api(self, ctx: Context):
+        embed = BotEmbed(ctx=ctx)
+        for prefix, blueprint in self.bot.get_blueprints().items():
+            blueprint: Blueprint
+            embed.add_field(name=blueprint.name, value=f"http://127.0.0.1{prefix}", inline=False)
+        await ctx.reply(embed=embed)
 
 
 def setup(bot: Bot):

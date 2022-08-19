@@ -1,25 +1,50 @@
-import json
 import secrets
 from datetime import datetime
+from typing import Optional
 
 import discord
 from discord.ext import commands
+from discord.ext.commands import BadArgument
 from flask import Blueprint
 from flask import request, jsonify
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
 
 import db_session
-from PLyBot.bot import Cog, Bot
+from PLyBot.bot import Cog, Bot, Context
+from PLyBot.embed import BotEmbed
 from db_session import SqlAlchemyBase
 from db_session.const import DEFAULT_ACCESS
 from .const import HeadersApi, STATUS_ABOUT
 from .extra import Permissions
 
-ATTRS_BOOL = {"admin", "everyone", "active"}
-ATTRS_INT = {"min_client_time", "min_member_time", "min_role"}
-ATTRS_LIST = {"roles", "users", "channels", "exc_roles", "exc_users", "exc_channels"}
+JSON_STATUS = lambda s, msg=None: (jsonify(status=s, msg=STATUS_ABOUT.get(s, "{msg}").format(msg=msg)), s)
 
-JSON_STATUS = lambda s, msg=None: jsonify(status=s, msg=STATUS_ABOUT.get(s, "{msg}").format(msg=msg))
+
+class ApiPerm:
+    READ = 1
+    WRITE = 2
+
+    def __init__(self, read=True, write=True):
+        self.flag = 0
+        self.flag |= read and self.READ
+        self.flag |= write and self.WRITE
+
+    def read(self) -> bool:
+        return bool(self.flag & self.READ)
+
+    def write(self) -> bool:
+        return bool(self.flag & self.WRITE)
+
+    @classmethod
+    async def convert(cls, _: Context, argument):
+        allow = ["просмотр", "изменение"]
+        if argument not in allow:
+            raise BadArgument(f"Неизвестный вид прав. Доступны: {allow}")
+        return cls(read=True, write=argument == "изменение")
+
+    @classmethod
+    def from_flag(cls, flag: int) -> "ApiPerm":
+        return cls(read=bool(flag & ApiPerm.READ), write=bool(flag & ApiPerm.WRITE))
 
 
 class ApiKey(SqlAlchemyBase):  # TODO: Ассиметричное шифрование добавить
@@ -34,11 +59,11 @@ class ApiKey(SqlAlchemyBase):  # TODO: Ассиметричное шифрова
     created_for_guild = Column(Integer, ForeignKey('guilds.id'), nullable=False)
 
     @staticmethod
-    def get(session: db_session.Session, key: str):
+    def get(session: db_session.Session, key: str) -> "ApiKey":
         return session.query(ApiKey).filter(ApiKey.key == key).first()
 
     def gen(self, ctx, permission_flags=0, until_active: datetime = None):
-        self.key = secrets.token_hex(32)
+        self.key = secrets.token_hex(8)
         self.permission = Permissions.make()
         self.until_active = datetime.now()
 
@@ -55,174 +80,26 @@ class ApiKey(SqlAlchemyBase):  # TODO: Ассиметричное шифрова
         return repr(self)
 
 
-class AccessCog(Cog, name="Access Master Ёжа"):
+class ApiCog(Cog, name="Api"):
     def __init__(self, bot):
-        super().__init__(bot, emoji_icon='🛡️')
-        self.bot.add_cog_blueprint(KeysApiBP(self), url_prefix='/access')
-        self.bot.add_blueprint(HintsBP(self.bot).blueprint, url_prefix='/hints')
+        super().__init__(bot, emoji_icon='📡')
+        self.bot.add_blueprint(HintsBP(self.bot).blueprint, url_prefix='/api/hints')
+        self.bot.add_blueprint(CogsBP(self.bot).blueprint, url_prefix='/api/cogs')
         self.bot.add_models(ApiKey)
 
-    async def cog_check(self, ctx: commands.Context):
-        # TODO: Исправить
-        # if ctx.author.guild_permissions.administrator:
-        #     return True
-        return await self.bot.is_owner(ctx.author)
-
-    @staticmethod
-    async def format_access(ctx: commands.Context, embed: discord.Embed, access: dict):
-        for key, (val, lvl) in access.items():
-            if 'channels' in key:
-                val = "\n".join(
-                    ctx.bot.get_channel(id_).mention for id_ in val if ctx.bot.get_channel(id_) is not None) or []
-            if 'users' in key:
-                val = "\n".join(ctx.bot.get_user(id_).mention for id_ in val if ctx.bot.get_user(id_) is not None) or []
-            if 'roles' in key:
-                val = "\n".join(
-                    ctx.guild.get_role(id_).mention for id_ in val if ctx.guild.get_role(id_) is not None) or []
-            if isinstance(val, bool):
-                val = "Да" if val else "Нет"
-            if not val:
-                val = "Не указано"
-            embed.add_field(name=key, value=str(val) + "*" * lvl)
-
-    # TODO: Переделать поиск cog или command
-    @commands.command(name='доступ', aliases=['acc', 'access'], enabled=False)
+    @commands.command('api-key')
     @commands.guild_only()
-    async def get_access_cmd(self, ctx: commands.Context, name: str):
-        """
-        Получает права доступа у команды или модуля (если name=="DEF", то покажет настройки по умолчанию)
-        """
-        command = self.bot.get_command(name)
-        if command is None:
-            cog = self.bot.get_cog(name)
-        else:
-            cog = command.cog
-        assert not (command is None and cog is None), "Неизвестный модуль или команда"
+    @commands.has_permissions(administrator=True)
+    async def _cmd_api_key(self, ctx: Context, permission: ApiPerm = ApiPerm(write=True)):
+        with db_session.create_session() as session:
+            api_key = ApiKey()
+            api_key.gen(ctx, permission_flags=permission.flag)
+            session.add(api_key)
+            session.commit()
 
-        if not isinstance(cog, Cog):
-            assert command is None, "Команда не поддерживает настройку прав"
-            assert isinstance(cog, Cog) and cog.cls_config is not None, "Модуль не поддерживает настройку прав"
-
-        session = db_session.create_session()
-        access = cog.get_config(session, ctx.guild).get_access()[str(command)]
-        session.close()
-
-        await ctx.send("```json\n" + json.dumps(access, indent=4) + "\n```")
-
-    # TODO: Подделать описания команд
-    @commands.command(name='устдоступ', aliases=['set_acc', 'setacc', 'set_access', '=acc'], enabled=False)
-    @commands.guild_only()
-    async def set_access_cmd(self, ctx: commands.Context, name: str, attr: str = None, *args: int):
-        """
-        Устанавливает допуск по одному из параметров
-        Если command == "ALL" то вышлет настройки для модуля, иначе для команды
-        Если attr == "DEF" то выставит значение по умолчанию, иначе будет изменять атрибут
-        args параметры для атрибута (0 == false, 1 == true если bool тип), если не указан то по умолчанию
-        (Указывается целочисленным параметром)
-        """
-        command = self.bot.get_command(name)
-        if command is None:
-            cog = self.bot.get_cog(name)
-        else:
-            cog = command.cog
-        assert not (command is None and cog is None), "Неизвестный модуль или команда"
-
-        check = isinstance(cog, Cog) and cog.cls_config is not None
-        assert check or command is None, "Команда не поддерживает настройку прав"
-        assert check, "Модуль не поддерживает настройку прав"
-
-        assert attr in ATTRS_BOOL | ATTRS_INT | ATTRS_LIST or attr is None, f"Недействительный параметр '{attr}'"
-
-        session = db_session.create_session()
-        config = cog.get_config(session, ctx.guild)
-        access = config.get_access()
-        change_access = access["__cog__" if command is None else str(command)]
-        if attr is None:
-            change_access.clear()
-        elif args:
-            if attr in ATTRS_BOOL:
-                change_access[attr] = bool(args[0])
-            elif attr in ATTRS_INT:
-                change_access[attr] = int(args[0])
-            elif attr in ATTRS_LIST:
-                change_access[attr] = list(map(int, args))
-        else:
-            del change_access[attr]
-        config.set_access(access)
-        session.commit()
-        session.close()
-
-        await ctx.send(embed=discord.Embed(title="Успешно!", description="настройки конфига обновлены"))
-
-    @commands.command(name='+доступ', aliases=['+access', '+acc'])
-    @commands.guild_only()
-    async def access_cmd(self, ctx: commands.Context, command_name: str):
-        """
-        Возвращает предварительные права доступа
-        """
-        command = self.bot.get_command(command_name)
-        assert command is not None, f"Несуществующая команда '{command_name}'"
-
-        cog = command.cog
-
-        assert isinstance(cog, Cog), "Этот модуль не поддерживает установку прав"
-        assert cog.cls_config is not None, "Этот модуль не поддерживает установку прав"
-
-        session = db_session.create_session()
-        access = cog.get_config(session, ctx.guild).get_access()
-        session.close()
-
-        access_cmd = access[str(command)]
-        access_cog = access["__cog__"]
-
-        def access_get(__key):
-            val = access_cmd.get(__key) or access_cog.get(__key) or DEFAULT_ACCESS[__key]
-            if __key in access_cmd:
-                lvl = 0
-            elif __key in access_cog:
-                lvl = 1
-            else:
-                lvl = 2
-            return val, lvl
-
-        pre_access = {}
-        for key in DEFAULT_ACCESS.keys():
-            pre_access[key] = access_get(key)
-        pre_access["command"] = (command_name, 0)
-        embed = discord.Embed(
-            title=f"Права доступа к \"{command_name}\""
-        )
-        await self.format_access(ctx, embed, pre_access)
-        await ctx.send(embed=embed)
-
-    @commands.command(name='комп', aliases=['моды', 'mods', 'модули', 'компоненты'])
-    @commands.guild_only()
-    async def get_modules(self, ctx: commands.Context):
-        """
-        Возвращает список модулей с некоторой технической информацией, по отношению к вам на этом сервере
-        """
-        session = db_session.create_session()
-        text = []
-        for name in sorted(self.bot.cogs.keys()):
-            cog: Cog = self.bot.get_cog(name)
-
-            elem = []
-            if cog.cls_config is not None and hasattr(cog.cls_config, "active_until"):
-                date = cog.get_config(session, ctx.guild).active_until
-            else:
-                date = None
-            elem.append(f'активен{"=неограниченно" if date is None else f"_до={date}"}')
-
-            if await self.bot.is_owner(ctx.author):
-                config = cog.cls_config.__tablename__ if cog.cls_config else "Нет"
-                elem.append(f'конфиг={config}')
-
-            text.append(f'{name.ljust(len(max(self.bot.cogs.keys(), key=len)), " ")} [{"; ".join(elem)}]')
-
-        if text:
-            await ctx.send("```python\n" + "\n".join(text) + "\n```")
-        else:
-            await ctx.send("```python\nУ вас нет доступных модулей\n```")
+            embed = BotEmbed(ctx=ctx)
+            embed.add_field(name="Код", value=api_key.key, inline=False)
+            await ctx.reply(embed=embed)
 
 
 class BaseApiBP:
@@ -230,7 +107,6 @@ class BaseApiBP:
 
     def __init__(self, cog: Cog):
         self.cog = cog
-
         self.blueprint.before_request(self.before_check_request)
         self.blueprint.route('/')(self.index)
         if cog.cls_config and hasattr(cog.cls_config, 'access'):
@@ -240,28 +116,56 @@ class BaseApiBP:
         return _GetRuleFromSetupState()(self.blueprint)
 
     def index(self):
-        return jsonify(sections=list(self.get_routes().keys() - {'/'}))
+        return jsonify(cog=self.cog.qualified_name,
+                       sections=list(self.get_routes().keys() - {'/'})), 200
 
     def access(self):
         with db_session.create_session() as session:
             if request.method == 'GET':
-                access = self.cog.get_config(session, request.headers[HeadersApi.GUILD_ID]).get_access()
-                access['__default__'] = DEFAULT_ACCESS.copy()
-                return jsonify(guild_id=int(request.headers[HeadersApi.GUILD_ID]),
-                               cog=self.cog.qualified_name,
-                               access=access)
+                try:
+                    guild_id = int(request.headers[HeadersApi.GUILD_ID])
+
+                except ValueError:
+                    return JSON_STATUS(400)
+                else:
+                    access = self.cog.get_config(session, guild_id).get_access()
+                    access['__default__'] = DEFAULT_ACCESS.copy()
+                    return jsonify(guild_id=int(request.headers[HeadersApi.GUILD_ID]),
+                                   cog=self.cog.qualified_name,
+                                   access=access)
             elif request.method == 'POST':
                 return jsonify(status='ok')
 
     def before_check_request(self):
         guild_id = request.headers.get(HeadersApi.GUILD_ID)
         api_key = request.headers.get(HeadersApi.API_KEY)
-        if not guild_id or not api_key:
+        if not guild_id or not api_key or not guild_id.isnumeric():
             return JSON_STATUS(400)
-        if self.cog.cls_config:
-            with db_session.create_session() as session:
-                if not self.cog.get_config(session, guild_id):
-                    return JSON_STATUS(400)
+
+        with db_session.create_session() as session:
+            if self.cog.cls_config and not self.cog.get_config(session, guild_id):
+                return JSON_STATUS(425)
+            api_key_data = ApiKey.get(session, api_key)
+            if not api_key_data:
+                return JSON_STATUS(403)
+            perm = ApiPerm.from_flag(flag=api_key_data.permission)
+            if request.method == "GET" and not perm.read():
+                return JSON_STATUS(403)
+            if request.method == "POST" and not perm.write():
+                return JSON_STATUS(403)
+
+
+class JsonParam:
+    def __init__(self, dtype, islist=False, about=None):
+        self.type = dtype
+        self.islist = islist
+        self.about = about
+
+    def make(self, value):
+        return jsonify(value=value, type=self.type, about=self.about, islist=self.islist)
+
+    def get(self, json_data: dict):
+        pass
 
 
 class HintsBP:
@@ -333,8 +237,21 @@ class HintsBP:
             return JSON_STATUS(204)
 
 
-class KeysApiBP(BaseApiBP):
-    blueprint = Blueprint('keys_api', __name__)
+class CogsBP:
+    blueprint = Blueprint('cogs_api', __name__)
+
+    def __init__(self, bot: Bot):
+        self.bot = bot
+        self.load()
+
+    def load(self):
+        @self.blueprint.route('/')
+        def api_cogs():
+            response = {"cogs": {}}
+            for url_rule, bp in self.bot.get_cog_blueprints().items():
+                if hasattr(bp, "cog"):
+                    response["cogs"][bp.cog.qualified_name] = url_rule
+            return response
 
 
 class _GetRuleFromSetupState:
@@ -351,6 +268,7 @@ class _GetRuleFromSetupState:
         result = {}
         for func in (self.__blueprint or blueprint).deferred_functions:
             try:
+                # noinspection PyTypeChecker
                 rule, endpoint, f, options = func(self)
                 result[rule] = (endpoint, f, options)
             except AttributeError:
@@ -363,4 +281,4 @@ class _GetRuleFromSetupState:
 
 
 def setup(bot: Bot):
-    bot.add_cog(AccessCog(bot))
+    bot.add_cog(ApiCog(bot))

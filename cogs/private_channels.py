@@ -9,7 +9,7 @@ from discord_components import Select, SelectOption, Interaction
 from flask import Blueprint, jsonify, request
 
 import db_session
-from PLyBot import BaseApiBP, JSON_STATUS
+from PLyBot import BaseApiBP, JSON_STATUS, JsonParam
 from PLyBot import Bot, Cog, Context, get_any, BotEmbed
 from PLyBot.const import HeadersApi, Types
 from db_session import SqlAlchemyBase, BaseConfigMix, NONE
@@ -165,30 +165,36 @@ class PrivateChannelsCog(Cog, name="Приватные каналы"):
 class PrivateChannelsBP(BaseApiBP):
     blueprint = Blueprint('private_channels_api', __name__)
 
-    def __init__(self, cog):
+    CHANNELS_P = JsonParam(
+            dtype=Types.voice_channel,
+            about=None,
+            islist=True)
+
+    def __init__(self, cog: PrivateChannelsCog):
         super(PrivateChannelsBP, self).__init__(cog)
 
     @staticmethod
     @blueprint.route('/channels', methods=['GET', 'POST'])
     def get_channels_bp():
         with db_session.create_session() as session:
-            guild_id = request.headers[HeadersApi.GUILD_ID]
+            guild_id = int(request.headers[HeadersApi.GUILD_ID])
 
-            config = session.query(PrivateChannelsConfig).filter(
-                PrivateChannelsConfig.guild_id == int(guild_id)).first()
-            if not config:
-                return JSON_STATUS(400, msg="bad guild-id")
+            config = PrivateChannelsCog.cog.get_config(session, guild_id)
+
             if request.method == 'GET':
                 channels = config.channels
-                return jsonify(value=list(map(int, channels.split(';') if channels else [])),
-                               type=Types.voice_channel,
-                               about=None,
-                               islist=True)
+                return PrivateChannelsBP.CHANNELS_P.make(list(map(int, channels.split(';') if channels else [])))
+
             elif request.method == 'POST':
-                if "value" in request.json and isinstance(request.json['value'], list):
-                    channels = request.json  # TODO: Доделать
+                try:
+                    channels: List[discord.VoiceChannel] = PrivateChannelsBP.CHANNELS_P.get(request.json)
+                except ValueError:
+                    return JSON_STATUS(400)
+                else:
+                    config.set_channels(*channels)
+                    session.commit()
                     return JSON_STATUS(202)
-                return JSON_STATUS(400)
+        return JSON_STATUS(400)
 
 
 def setup(bot: Bot):
