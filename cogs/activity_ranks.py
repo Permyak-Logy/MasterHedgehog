@@ -161,5 +161,5 @@ class ActivityRanksCog(Cog, name="Ранги Активности"):
             session.commit()
 
 
-def setup(bot: Bot):
-    bot.add_cog(ActivityRanksCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(ActivityRanksCog(bot))

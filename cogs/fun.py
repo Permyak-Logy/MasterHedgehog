@@ -187,5 +187,5 @@ class FunCog(Cog, name="Веселье"):
             embed=BotEmbed(ctx=ctx, title=f"Сапёр {width}x{height} с {count} бомбами", description=map_sapper))
 
 
-def setup(bot: Bot):
-    bot.add_cog(FunCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(FunCog(bot))

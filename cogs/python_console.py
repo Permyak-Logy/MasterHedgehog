@@ -133,5 +133,5 @@ class PythonConsoleCog(Cog, name='PyConsole'):
         return True
 
 
-def setup(bot: Bot):
-    bot.add_cog(PythonConsoleCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(PythonConsoleCog(bot))

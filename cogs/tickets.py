@@ -209,5 +209,5 @@ class TicketsCog(Cog, name='Билеты'):
                         pass
 
 
-def setup(bot: Bot):
-    bot.add_cog(TicketsCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(TicketsCog(bot))

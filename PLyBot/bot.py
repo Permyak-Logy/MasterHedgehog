@@ -16,7 +16,6 @@ from db_session.base import User, Member, Guild, Message
 from .enums import TypeBot
 from .extra import HRF, full_using_db, run_if_ready_db
 from .help import HelpCommand
-from discord_components import ComponentsBot
 
 # TODO: Загрузка внешней базы данных
 # TODO: Роли участников в отдельной таблице
@@ -29,7 +28,7 @@ logging = logging.getLogger(__name__)
 # TODO: Ранговая система
 
 # noinspection PyMethodMayBeStatic
-class Bot(ComponentsBot):
+class Bot(commands.Bot):
     bot: "Bot" = None
 
     def __init__(self, *, db_con: Optional[str] = None, bot_type: TypeBot = TypeBot.other, app_name=__name__,
@@ -62,7 +61,7 @@ class Bot(ComponentsBot):
         self.activity: discord.Activity = options.pop("activity", None)
 
         self.footer: dict = options.pop("footer", None)
-        self.colour = options.pop("colour_embeds", discord.embeds.EmptyEmbed)
+        self.colour = options.pop("colour_embeds", None)
 
         self.__invite_link = options.pop("invite_link", None)
         self.permissions = options.pop("permissions", 0)

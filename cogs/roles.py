@@ -411,7 +411,7 @@ class RolesCog(Cog, name='Роли'):
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
     @commands.has_permissions(manage_roles=True)
-    async def auto_roles(self):
+    async def auto_roles(self, ctx: Context):
         pass
 
     @commands.guild_only()
@@ -423,5 +423,5 @@ class RolesCog(Cog, name='Роли'):
 
 # TODO: Создание цветных ролей
 
-def setup(bot: Bot):
-    bot.add_cog(RolesCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(RolesCog(bot))

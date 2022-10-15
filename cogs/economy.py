@@ -1184,5 +1184,5 @@ class DBEconomyTools:
         return bal
 
 
-def setup(bot: Bot):
-    bot.add_cog(EconomyCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(EconomyCog(bot))

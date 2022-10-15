@@ -352,5 +352,5 @@ class ModerationCog(Cog, name="Модерация"):
             await ctx.send(embed=BotEmbed(ctx=ctx, title="Успешно!", description=f"Роль для мьюта сброшена"))
 
 
-def setup(bot: Bot):
-    bot.add_cog(ModerationCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(ModerationCog(bot))

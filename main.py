@@ -26,7 +26,10 @@ def init_logging(logging_conf: dict):
 
 def get_cogs():
     cogs_names = filter(not_in(['__init__.py', '__pycache__'] + [
-        'warframe.py', 'APs.py', 'game_activity.py', 'statistic.py']), os.listdir('cogs'))
+        'warframe.py', 'APs.py', 'game_activity.py', 'statistic.py', 'bodyguard.py', 'developer.py',
+    'private_channels.py']),
+                        os.listdir('cogs'))
+    cogs_names = []
     cogs = list(map(lambda x: f"cogs.{x[:-3]}", cogs_names)) + ['PLyBot.info']  # , 'PLyBot.api']
     return cogs
 

@@ -59,5 +59,5 @@ class AICog(Cog, name='Ёжа Ёжиков'):
         pass
 
 
-def setup(bot: Bot):
-    bot.add_cog(AICog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(AICog(bot))

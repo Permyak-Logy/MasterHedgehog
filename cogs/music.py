@@ -190,5 +190,5 @@ class MusicCog(Cog, name='Музыка YouTube'):
         await message.edit(embed=embed)
 
 
-def setup(bot: Bot):
-    bot.add_cog(MusicCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(MusicCog(bot))

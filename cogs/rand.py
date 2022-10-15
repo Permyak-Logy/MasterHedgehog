@@ -109,5 +109,5 @@ class RandomCog(Cog, name='Случайности'):
             embed=BotEmbed(ctx=ctx, description=" + ".join(results) + f" = {total}", colour=self.bot.colour))
 
 
-def setup(bot: Bot):
-    bot.add_cog(RandomCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(RandomCog(bot))

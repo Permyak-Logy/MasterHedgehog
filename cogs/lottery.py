@@ -158,5 +158,5 @@ class LotteryCog(Cog, name="Лотереи"):
         await self._handle_raffle(ctx, role, seconds, title)
 
 
-def setup(bot: Bot):
-    bot.add_cog(LotteryCog(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(LotteryCog(bot))
